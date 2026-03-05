@@ -118,8 +118,7 @@
           {
             "group": "Media",
             "pages": [
-              "api/media/upload",
-              "api/media/management"
+              "api/media/upload"
             ]
           }
         ]
