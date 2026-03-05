@@ -1,0 +1,171 @@
+---
+title: 'Creating a Series'
+description: 'Step-by-step guide to create and organize a new series'
+icon: 'clapperboard'
+---
+
+## Overview
+
+Series are the primary organizational structure in MediaStream, allowing you to group related content into seasons and episodes. This guide walks you through creating a new series from scratch.
+
+## Creating Your First Series
+
+<Steps>
+  <Step title="Navigate to Series List">
+    From the Dashboard or sidebar, navigate to the **Series** section to view your existing series library.
+    
+    You'll see a grid view of all available series with cover images, titles, and descriptions.
+  </Step>
+
+  <Step title="Access Create Form">
+    Click the **Create New Series** button or navigate to the series creation page.
+    
+    The breadcrumb trail will show: "Añadir serie" (Add series)
+  </Step>
+
+  <Step title="Enter Series Details">
+    Fill in the required information:
+    
+    **Series Name** (Required)
+    - Enter a descriptive name for your series
+    - This will be displayed to viewers
+    - Example: "Tech Tutorials", "Cooking Show Season 1"
+    
+    **Series Type** (Required)
+    - Select from the dropdown menu
+    - Currently supports: **Serie** (TV Show)
+    - This determines how content is organized and displayed
+  </Step>
+
+  <Step title="Submit the Form">
+    Click the **Añadir serie** (Add series) button to create your series.
+    
+    - The button shows a spinner animation while processing
+    - The form will be disabled during submission
+    - Upon success, you'll be redirected to the series detail page
+  </Step>
+</Steps>
+
+<Tip>
+The form automatically resets after successful submission if you want to create multiple series in a row.
+</Tip>
+
+## After Creating a Series
+
+Once your series is created, you'll be taken to the **Series Detail** page where you can:
+
+### View Series Information
+
+- **Cover Image**: Large banner image at the top (aspect ratio: video format)
+- **Title**: Your series name prominently displayed
+- **Description**: Full series description
+
+### Manage Series Structure
+
+The detail page is divided into two main sections:
+
+<Accordion title="Temporadas (Seasons)">
+  The left panel displays all seasons in your series:
+  
+  - **Season Selector**: Dropdown menu to switch between seasons
+  - **Add Season Button**: Plus icon (➕) to create new seasons
+  - **Season Cards**: Visual cards for each season with:
+    - Season title
+    - Season description
+    - Cover image
+    - Edit button (pencil icon)
+</Accordion>
+
+<Accordion title="Episodios (Episodes)">
+  The right panel shows episodes for the selected season:
+  
+  - Episode thumbnails (25% width)
+  - Episode titles and descriptions
+  - Clickable to view episode details
+</Accordion>
+
+## Adding Seasons to Your Series
+
+<Steps>
+  <Step title="Navigate to Season Creation">
+    From the series detail page, click the **Plus (+)** icon next to the season dropdown.
+    
+    Breadcrumb path: Series > Temporadas > Añadir temporada
+  </Step>
+
+  <Step title="Fill Season Information">
+    **Season Title** (Required)
+    - Example: "Season 1", "2024 Episodes"
+    - This helps organize your content chronologically
+    
+    **Season Description** (Required)
+    - Brief overview of what this season contains
+    - Example: "Introduction to web development fundamentals"
+  </Step>
+
+  <Step title="Create Season">
+    Click **Añadir temporada** (Add season) to save.
+    
+    The form will reset on success, allowing you to add multiple seasons quickly.
+  </Step>
+</Steps>
+
+## Series Management Features
+
+### Image Handling
+
+MediaStream automatically handles cover images:
+
+- Images are served from the CDN: `platform-static.cdn.mdstrm.com`
+- Fallback image is provided if no custom image is uploaded
+- Hover effects enhance the visual experience
+
+### Navigation
+
+Navigate back to the series list at any time:
+
+- Click **Series** in the breadcrumb trail
+- Use the sidebar navigation
+
+### Editing Series
+
+From the series detail page:
+
+- Click the **Edit** (pencil icon) button on any season card
+- Update series information as needed
+
+<Note>
+Series names and types should be chosen carefully as they affect how content is organized and discovered by viewers.
+</Note>
+
+## Best Practices
+
+<CardGroup cols={2}>
+  <Card title="Naming Convention" icon="signature">
+    Use clear, descriptive names that help viewers understand the content at a glance
+  </Card>
+  <Card title="Organization" icon="layer-group">
+    Plan your season structure before creating to maintain consistent organization
+  </Card>
+  <Card title="Descriptions" icon="file-lines">
+    Write detailed descriptions to improve content discovery
+  </Card>
+  <Card title="Images" icon="image">
+    Use high-quality cover images with 16:9 aspect ratio for best display
+  </Card>
+</CardGroup>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Manage Content" icon="folder" href="./managing-content">
+    Learn how to edit, organize, and delete your series and episodes
+  </Card>
+  <Card title="Add Episodes" icon="film">
+    Upload and organize episodes within your series structure
+  </Card>
+</CardGroup>
+
+<Warning>
+Make sure to save your changes before navigating away from any form. Unsaved changes will be lost.
+</Warning>

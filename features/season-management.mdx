@@ -1,0 +1,390 @@
+---
+title: 'Season Management'
+description: 'Organize your series into seasons for better content structure'
+icon: 'layer-group'
+---
+
+## Overview
+
+Seasons allow you to organize episodes within a series into logical groupings. Whether you're managing a TV show, training course modules, or any episodic content, seasons provide the perfect structure.
+
+<CardGroup cols={2}>
+  <Card title="Create Seasons" icon="plus">
+    Add new seasons to any series
+  </Card>
+  <Card title="View Seasons" icon="list">
+    Browse all seasons in a series
+  </Card>
+  <Card title="Edit Details" icon="pencil">
+    Update season information and metadata
+  </Card>
+  <Card title="Delete Seasons" icon="trash">
+    Remove seasons and their episodes
+  </Card>
+</CardGroup>
+
+## Creating a New Season
+
+Seasons are always created within the context of a specific series.
+
+### Navigation
+
+1. Go to your Series Library
+2. Click on a series
+3. Click the **+** button next to "Temporadas" (Seasons)
+4. Fill in the season details
+
+### Required Fields
+
+<ParamField path="title" type="string" required>
+  The name of the season (e.g., "Season 1", "Module 1: Basics")
+</ParamField>
+
+<ParamField path="description" type="string" required>
+  A brief description of what this season covers
+</ParamField>
+
+### Example: Season Creation Form
+
+```vue
+<Form v-bind="apiSeasons.store.form({ showId: props.showId })"
+  :reset-on-success="['title', 'description']"
+  v-slot="{ errors, processing }" 
+  class="flex flex-col space-y-4">
+  
+  <Box>
+    <Label for="title" class="w-full text-lg font-semibold">
+      Nombre de la temporada
+    </Label>
+    <Input id="title" 
+      name="title" 
+      type="text" 
+      placeholder="Nombre de la temporada" 
+      :disabled="processing" 
+      required />
+  </Box>
+  
+  <Box>
+    <Label for="description" class="w-full text-lg font-semibold">
+      Descripción de la temporada
+    </Label>
+    <Input id="description" 
+      name="description" 
+      type="text" 
+      placeholder="Descripción de la temporada" 
+      :disabled="processing" 
+      required />
+  </Box>
+  
+  <Button type="submit" class="max-w-[200px]" :disabled="processing">
+    <Spinner v-if="processing" />
+    Añadir temporada
+  </Button>
+</Form>
+```
+
+<Note>
+  The `showId` is automatically passed from the parent series, ensuring the season is created in the correct series.
+</Note>
+
+## Season Display
+
+Seasons are displayed in the series detail view with rich visual elements.
+
+### Season Card Components
+
+```vue
+<template>
+  <div class="flex flex-col gap-2">
+    <div class="flex flex-row justify-between items-center">
+      <Typography variant="h2" color="white" size="large">
+        {{ props.data?.title }}
+      </Typography>
+      <Link :href="`series/${props?.showId}/season/${props?.seasonId}`" 
+        class="flex w-8 aspect-square hover:bg-content-3 items-center 
+               justify-center duration-200 rounded-sm">
+        <Icon name="Pencil" size="24"></Icon>
+      </Link>
+    </div>
+    
+    <Typography variant="h2" color="white" size="base">
+      {{ props.data?.description }}
+    </Typography>
+    
+    <div class="h-72 w-full overflow-hidden">
+      <img :src="imageUrl(props.data)"
+        class="object-cover inset-0 w-full h-full transition-transform 
+               duration-300 group-hover:scale-105" />
+    </div>
+  </div>
+</template>
+```
+
+### Features
+
+- **Cover Image**: Each season can have its own cover image
+- **Edit Button**: Quick access to edit season details
+- **Hover Effects**: Smooth transitions for better UX
+- **Responsive Design**: Adapts to different screen sizes
+
+## Season Selector
+
+When viewing a series, you can switch between seasons using a dropdown selector.
+
+```vue
+<div class="flex flex-row gap-4 items-center">
+  <Select class="w-full">
+    <SelectTrigger class="w-[280px]">
+      <SelectValue class="text-white" :placeholder="props?.seasons[0].title" />
+    </SelectTrigger>
+    <SelectContent>
+      <SelectGroup>
+        <SelectItem v-for="season in props.seasons" 
+          :key="season._id" 
+          :value="season._id">
+          {{ season.title }}
+        </SelectItem>
+      </SelectGroup>
+    </SelectContent>
+  </Select>
+  
+  <Link :href="series.seasons.create(props.showId)" 
+    class="flex w-8 aspect-square bg-secondary-base hover:bg-secondary-900 
+           items-center justify-center duration-200 rounded-sm">
+    <Icon name="Plus" size="24"></Icon>
+  </Link>
+</div>
+```
+
+<Tip>
+  The season selector automatically loads episodes for the selected season, providing a seamless browsing experience.
+</Tip>
+
+## API Integration
+
+The `SeasonController` manages all season operations within a series.
+
+### Backend Controller
+
+```php
+class SeasonController extends Controller
+{
+    /**
+     * Display all seasons in a series.
+     */
+    public function index(Request $request)
+    {
+        $showId = $request->route('showId');
+
+        $response = MediastreamService::request(
+            '/show/' . $showId . '/season/',
+            'get'
+        );
+
+        return $response->json();
+    }
+
+    /**
+     * Store a newly created season.
+     */
+    public function store(Request $request)
+    {
+        $showId = $request->route('showId');
+
+        $response = MediastreamService::request(
+            '/show/' . $showId . '/season/',
+            'post',
+            $request->all()
+        );
+
+        return $response->json();
+    }
+
+    /**
+     * Display the specified season.
+     */
+    public function show(Request $request)
+    {
+        $showId = $request->route('showId');
+        $seasonId = $request->route('seasonId');
+
+        $response = MediastreamService::request(
+            '/show/' . $showId . '/season/' . $seasonId,
+            'get'
+        );
+
+        return $response->json();
+    }
+
+    /**
+     * Update the specified season.
+     */
+    public function update(Request $request)
+    {
+        $showId = $request->route('showId');
+        $seasonId = $request->route('seasonId');
+
+        $response = MediastreamService::request(
+            '/show/' . $showId . '/season/' . $seasonId,
+            'post',
+            $request->all()
+        );
+
+        return $response->json();
+    }
+
+    /**
+     * Remove the specified season.
+     */
+    public function destroy(Request $request)
+    {
+        $showId = $request->route('showId');
+        $seasonId = $request->route('seasonId');
+
+        $response = MediastreamService::request(
+            '/show/' . $showId . '/season/' . $seasonId,
+            'delete'
+        );
+
+        return $response->json();
+    }
+}
+```
+
+### API Endpoints
+
+All season endpoints are nested under their parent series:
+
+<CodeGroup>
+```bash List Seasons
+GET /api/series/{showId}/seasons
+```
+
+```bash Create Season
+POST /api/series/{showId}/seasons
+```
+
+```bash Get Season
+GET /api/series/{showId}/seasons/{seasonId}
+```
+
+```bash Update Season
+POST /api/series/{showId}/seasons/{seasonId}
+```
+
+```bash Delete Season
+DELETE /api/series/{showId}/seasons/{seasonId}
+```
+</CodeGroup>
+
+<Note>
+  All API requests are automatically authenticated using your Mediastream API key configured in the environment variables.
+</Note>
+
+## Season Data Structure
+
+Each season object contains the following properties:
+
+```typescript
+interface Season {
+  _id: string;              // Unique season identifier
+  title: string;            // Season name
+  description: string;      // Season description
+  images: Array<{           // Season cover images
+    _id: string;
+    path: string;
+    basePath: string;
+  }>;
+}
+```
+
+### Image URL Construction
+
+Season images are served from the Mediastream CDN:
+
+```typescript
+const imageUrl = (season: Season) => {
+  const basePath = season?.images?.[0]?.basePath
+  return basePath
+    ? `https://platform-static.cdn.mdstrm.com${basePath}`
+    : 'https://mxplus.tv/images/mini-78.png'  // Fallback image
+}
+```
+
+## Best Practices
+
+<AccordionGroup>
+  <Accordion title="Season Numbering">
+    Use consistent numbering for your seasons:
+    - "Season 1", "Season 2", etc. for TV shows
+    - "Module 1", "Module 2", etc. for courses
+    - "Part 1", "Part 2", etc. for documentaries
+    
+    This helps users understand the content progression.
+  </Accordion>
+
+  <Accordion title="Descriptive Titles">
+    While "Season 1" works, consider adding context:
+    - "Season 1: The Beginning"
+    - "Module 1: Fundamentals"
+    - "Part 1: Introduction to the Topic"
+    
+    This provides better context in the UI.
+  </Accordion>
+
+  <Accordion title="Season Descriptions">
+    Write clear descriptions that explain:
+    - What content is covered in this season
+    - What viewers will learn or experience
+    - How this season fits into the overall series
+    
+    Good descriptions improve content discoverability.
+  </Accordion>
+
+  <Accordion title="Content Organization">
+    Plan your season structure before creating episodes:
+    1. Determine logical content groupings
+    2. Create seasons for each major section
+    3. Distribute episodes evenly across seasons
+    4. Keep related content together
+  </Accordion>
+</AccordionGroup>
+
+## Troubleshooting
+
+<AccordionGroup>
+  <Accordion title="Season Not Appearing">
+    If a newly created season doesn't appear:
+    1. Refresh the series detail page
+    2. Check that the season was created under the correct series
+    3. Verify your API connection is working
+    4. Check browser console for errors
+  </Accordion>
+
+  <Accordion title="Cannot Add Episodes">
+    If you can't add episodes to a season:
+    1. Ensure the season was successfully created
+    2. Verify you have the correct season ID
+    3. Check that you have proper permissions
+    4. Try refreshing the page
+  </Accordion>
+
+  <Accordion title="Images Not Loading">
+    If season images aren't displaying:
+    1. Check that images were properly uploaded to Mediastream
+    2. Verify the CDN URL is accessible
+    3. Clear your browser cache
+    4. Check for CORS issues in browser console
+  </Accordion>
+</AccordionGroup>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Episode Management" icon="video" href="/features/episode-management">
+    Learn how to add episodes to your seasons
+  </Card>
+  <Card title="VOD Upload" icon="upload" href="/features/vod-upload">
+    Upload video content for your episodes
+  </Card>
+</CardGroup>

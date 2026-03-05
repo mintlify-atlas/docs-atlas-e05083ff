@@ -1,0 +1,396 @@
+---
+title: 'Upload Media'
+description: 'Register a new media upload and receive upload credentials'
+api: 'GET /api/media/upload'
+---
+
+## Overview
+
+This endpoint initiates the media upload process by registering a new file upload with Mediastream. It returns an upload server URL and token that you'll use to upload file chunks directly to Mediastream's servers.
+
+<Note>
+  This endpoint only **registers** the upload. The actual file chunks are uploaded directly to the Mediastream server URL returned in the response.
+</Note>
+
+## Authentication
+
+This endpoint requires authentication. The backend automatically includes your Mediastream API credentials configured in the environment variables:
+
+- `MEDIASTREAM_API_URL` - Your Mediastream API base URL
+- `MEDIASTREAM_API_KEY` - Your API authentication token
+
+## Query Parameters
+
+<ParamField query="size" type="integer" required>
+  The total size of the file to upload in bytes.
+  
+  Example: `52428800` (50MB file)
+</ParamField>
+
+<ParamField query="file_name" type="string" required>
+  The name of the file being uploaded, including the file extension.
+  
+  Example: `"my-video.mp4"`
+</ParamField>
+
+<ParamField query="type" type="string" optional>
+  The upload type. Defaults to `"remote"` for client-side uploads.
+  
+  Supported values:
+  - `remote` - Upload chunks directly from the client to Mediastream
+</ParamField>
+
+## Response
+
+<ResponseField name="status" type="string">
+  The status of the request. Returns `"success"` when upload is registered successfully.
+</ResponseField>
+
+<ResponseField name="data" type="object">
+  Upload credentials and server information.
+  
+  <ResponseField name="server" type="string">
+    The base URL where file chunks should be uploaded. Each chunk is uploaded to `{server}/{chunkNumber}`.
+    
+    Example: `"https://mdstrm.com/upload/abc123"`
+  </ResponseField>
+  
+  <ResponseField name="token" type="string">
+    Authentication token for uploading chunks. Include this in each chunk upload request.
+    
+    Example: `"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."`
+  </ResponseField>
+</ResponseField>
+
+## Request Example
+
+<CodeGroup>
+
+```bash cURL
+curl -X GET "https://your-app.com/api/media/upload?size=52428800&file_name=my-video.mp4&type=remote" \
+  -H "Accept: application/json" \
+  -H "Authorization: Bearer YOUR_AUTH_TOKEN"
+```
+
+```javascript JavaScript (Axios)
+import axios from 'axios'
+
+const file = document.querySelector('input[type="file"]').files[0]
+
+const response = await axios.get('/api/media/upload', {
+  params: {
+    size: file.size,
+    file_name: file.name,
+    type: 'remote',
+  },
+})
+
+const { server, token } = response.data.data
+console.log('Upload server:', server)
+console.log('Upload token:', token)
+```
+
+```php PHP (Laravel)
+use Illuminate\Support\Facades\Http;
+
+$response = Http::get('/api/media/upload', [
+    'size' => 52428800,
+    'file_name' => 'my-video.mp4',
+    'type' => 'remote',
+]);
+
+$data = $response->json();
+$server = $data['data']['server'];
+$token = $data['data']['token'];
+```
+
+</CodeGroup>
+
+## Response Example
+
+```json
+{
+  "status": "success",
+  "data": {
+    "server": "https://mdstrm.com/upload/abc123def456",
+    "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c"
+  }
+}
+```
+
+## Uploading File Chunks
+
+After registering the upload, split your file into chunks and upload each chunk sequentially:
+
+### Chunked Upload Process
+
+<Steps>
+  <Step title="Register Upload">
+    Call this endpoint with file metadata to get server URL and token
+  </Step>
+  
+  <Step title="Split File">
+    Divide the file into 10MB chunks using `File.slice()`
+    
+    ```javascript
+    const chunkSize = 10 * 1024 * 1024 // 10MB
+    const totalChunks = Math.ceil(file.size / chunkSize)
+    ```
+  </Step>
+  
+  <Step title="Upload Each Chunk">
+    Upload chunks sequentially to `{server}/{chunkNumber}`
+    
+    ```javascript
+    for (let i = 1; i <= totalChunks; i++) {
+      const start = (i - 1) * chunkSize
+      const end = Math.min(file.size, start + chunkSize)
+      const chunk = file.slice(start, end)
+      
+      const formData = new FormData()
+      formData.append('file', chunk)
+      formData.append('name', file.name)
+      formData.append('token', token)
+      
+      await axios.post(`${server}/${i}`, formData, {
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+        },
+      })
+    }
+    ```
+  </Step>
+  
+  <Step title="Track Progress">
+    Monitor upload progress using Axios `onUploadProgress` callback
+    
+    ```javascript
+    onUploadProgress: (event) => {
+      const progress = (event.loaded / event.total) * 100
+      console.log(`Upload progress: ${progress}%`)
+    }
+    ```
+  </Step>
+</Steps>
+
+### Complete Upload Example
+
+```javascript
+const uploadFile = async (file) => {
+  // Step 1: Register upload
+  const response = await axios.get('/api/media/upload', {
+    params: {
+      size: file.size,
+      file_name: file.name,
+      type: 'remote',
+    },
+  })
+
+  const { server, token } = response.data.data
+  
+  // Step 2: Upload chunks
+  const chunkSize = 10 * 1024 * 1024 // 10MB
+  const totalChunks = Math.ceil(file.size / chunkSize)
+  
+  for (let i = 1; i <= totalChunks; i++) {
+    const start = (i - 1) * chunkSize
+    const end = Math.min(file.size, start + chunkSize)
+    const chunk = file.slice(start, end)
+    
+    const formData = new FormData()
+    formData.append('file', chunk)
+    formData.append('name', file.name)
+    if (token) formData.append('token', token)
+    
+    await axios.post(`${server}/${i}`, formData, {
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+      onUploadProgress: (event) => {
+        if (event.total) {
+          const chunkProgress = (event.loaded / event.total) * (1 / totalChunks) * 100
+          const totalProgress = ((i - 1) / totalChunks) * 100 + chunkProgress
+          console.log(`Upload progress: ${totalProgress.toFixed(0)}%`)
+        }
+      },
+    })
+  }
+  
+  console.log('Upload complete!')
+}
+```
+
+## File Format Support
+
+Mediastream supports various video formats:
+
+<CardGroup cols={3}>
+  <Card title="MP4" icon="file-video">
+    H.264/H.265 codec
+  </Card>
+  <Card title="MOV" icon="file-video">
+    QuickTime format
+  </Card>
+  <Card title="AVI" icon="file-video">
+    Audio Video Interleave
+  </Card>
+  <Card title="MKV" icon="file-video">
+    Matroska container
+  </Card>
+  <Card title="WebM" icon="file-video">
+    VP8/VP9 codec
+  </Card>
+  <Card title="FLV" icon="file-video">
+    Flash Video format
+  </Card>
+</CardGroup>
+
+## File Size Limits
+
+File size limits depend on your Mediastream account tier:
+
+- **Free Tier**: Up to 500MB per file
+- **Pro Tier**: Up to 5GB per file
+- **Enterprise**: Custom limits available
+
+<Warning>
+  Files exceeding your account's size limit will be rejected during registration. Upgrade your plan for larger file support.
+</Warning>
+
+## Error Responses
+
+<ResponseField name="status" type="string">
+  Returns `"error"` when the request fails.
+</ResponseField>
+
+<ResponseField name="message" type="string">
+  Human-readable error message describing what went wrong.
+</ResponseField>
+
+<ResponseField name="code" type="string">
+  Machine-readable error code for programmatic handling.
+  
+  Common error codes:
+  - `invalid_file_size` - File size is 0 or exceeds limit
+  - `invalid_file_name` - File name contains invalid characters
+  - `quota_exceeded` - Account storage quota exceeded
+  - `invalid_api_key` - API authentication failed
+  - `rate_limit_exceeded` - Too many upload requests
+</ResponseField>
+
+### Error Response Example
+
+```json
+{
+  "status": "error",
+  "message": "File size exceeds maximum allowed limit of 5GB",
+  "code": "invalid_file_size"
+}
+```
+
+## Best Practices
+
+<AccordionGroup>
+  <Accordion title="Chunk Size">
+    Use **10MB chunks** for optimal performance:
+    - Smaller chunks (5MB): More requests, slower overall speed
+    - Larger chunks (20MB+): Higher failure rate on slow connections
+    - 10MB: Best balance for reliability and speed
+  </Accordion>
+
+  <Accordion title="Error Handling">
+    Implement retry logic for failed chunks:
+    ```javascript
+    const uploadChunkWithRetry = async (chunk, url, maxRetries = 3) => {
+      for (let attempt = 1; attempt <= maxRetries; attempt++) {
+        try {
+          return await axios.post(url, chunk)
+        } catch (error) {
+          if (attempt === maxRetries) throw error
+          await new Promise(r => setTimeout(r, 1000 * attempt))
+        }
+      }
+    }
+    ```
+  </Accordion>
+
+  <Accordion title="Progress Tracking">
+    Provide real-time feedback to users:
+    - Show overall progress percentage
+    - Display estimated time remaining
+    - Indicate current chunk being uploaded
+    - Allow users to cancel in-progress uploads
+  </Accordion>
+
+  <Accordion title="File Validation">
+    Validate files before uploading:
+    ```javascript
+    const validateFile = (file) => {
+      const maxSize = 5 * 1024 * 1024 * 1024 // 5GB
+      const allowedTypes = ['video/mp4', 'video/quicktime', 'video/x-msvideo']
+      
+      if (file.size > maxSize) {
+        throw new Error('File too large')
+      }
+      if (!allowedTypes.includes(file.type)) {
+        throw new Error('Unsupported file format')
+      }
+    }
+    ```
+  </Accordion>
+</AccordionGroup>
+
+## Implementation
+
+The backend implementation proxies requests to Mediastream's API:
+
+```php
+<?php
+
+namespace App\Http\Controllers\Api\Media;
+
+use App\Http\Controllers\Controller;
+use App\Http\Services\MediastreamService;
+use Illuminate\Http\Request;
+
+class UploadMediaController extends Controller
+{
+    public function upload(Request $request)
+    {
+        $size = $request->query('size');
+        $fileName = $request->query('file_name');
+
+        $response = MediastreamService::request(
+            '/media/upload',
+            'get',
+            [
+                'size' => $size,
+                'file_name' => $fileName,
+            ]
+        );
+
+        return $response->json();
+    }
+}
+```
+
+<Tip>
+  The `MediastreamService` automatically includes authentication headers using credentials from your `.env` file.
+</Tip>
+
+## Related Endpoints
+
+<CardGroup cols={2}>
+  <Card title="Media Management" icon="list" href="/api/media/management">
+    List and manage uploaded media files
+  </Card>
+  <Card title="Episode Management" icon="video" href="/api/episodes/create">
+    Link uploaded media to episodes
+  </Card>
+</CardGroup>
+
+## See Also
+
+- [VOD Upload Guide](/features/vod-upload) - Complete upload implementation guide
+- [Configuration](/getting-started/configuration) - Set up Mediastream API credentials
+- [Episode Management](/features/episode-management) - Add media to episodes

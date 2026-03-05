@@ -1,0 +1,683 @@
+---
+title: Backend Development
+description: Guide to Laravel controllers, services, and API integration patterns
+---
+
+MediaStream's backend is built on Laravel 12 with PHP 8.2, providing a robust foundation for the media streaming management platform.
+
+## Project Structure
+
+```
+app/
+├── Actions/
+│   └── Fortify/              # User authentication actions
+│       ├── CreateNewUser.php
+│       ├── ResetUserPassword.php
+│       └── PasswordValidationRules.php
+├── Http/
+│   ├── Controllers/
+│   │   ├── Api/              # API endpoints for AJAX
+│   │   ├── Web/              # Inertia page controllers
+│   │   ├── Settings/         # User settings
+│   │   └── Controller.php    # Base controller
+│   ├── Middleware/
+│   │   ├── HandleInertiaRequests.php
+│   │   └── HandleAppearance.php
+│   ├── Requests/             # Form request validation
+│   └── Services/             # Business logic services
+│       └── MediastreamService.php
+├── Models/
+│   └── User.php
+└── Providers/
+    ├── AppServiceProvider.php
+    └── RouteServiceProvider.php
+```
+
+## Controllers
+
+MediaStream uses two types of controllers: **Web Controllers** (Inertia pages) and **API Controllers** (AJAX endpoints).
+
+### Web Controllers (Inertia)
+
+Web controllers return Inertia responses that render Vue components:
+
+```php
+<?php
+// app/Http/Controllers/Web/SeriesController.php
+
+namespace App\Http\Controllers\Web;
+
+use App\Http\Controllers\Controller;
+use App\Http\Services\MediastreamService;
+use Illuminate\Http\Request;
+use Inertia\Inertia;
+
+class SeriesController extends Controller
+{
+    /**
+     * Display a listing of TV series.
+     */
+    public function index()
+    {
+        $response = MediastreamService::request('/show', 'get');
+        
+        if ($response->successful()) {
+            $data = $response->json('data');
+        } else {
+            $data = [];
+        }
+        
+        return Inertia::render('(media)/series/index', [
+            'data' => $data,
+        ]);
+    }
+    
+    /**
+     * Show the form for creating a new series.
+     */
+    public function create()
+    {
+        return Inertia::render('(media)/series/create/index');
+    }
+    
+    /**
+     * Store a newly created series.
+     */
+    public function store(Request $request)
+    {
+        $validated = $request->validate([
+            'series_name' => 'required|string|max:255',
+            'series_type' => 'required|in:tvshow',
+        ]);
+        
+        $response = MediastreamService::request('/show', 'post', [
+            'title' => $validated['series_name'],
+            'type' => $validated['series_type'],
+        ]);
+        
+        if ($response->successful()) {
+            return to_route('series.index')
+                ->with('success', 'Serie creada exitosamente.');
+        }
+        
+        return back()->withErrors([
+            'api_error' => 'Error al crear la serie: ' . $response->body(),
+        ]);
+    }
+    
+    /**
+     * Display the specified series with seasons and chapters.
+     */
+    public function show(Request $request)
+    {
+        $showId = $request->route('showId');
+        
+        // Fetch series details
+        $response = MediastreamService::request("/show/{$showId}", 'get');
+        $data = $response->successful() ? $response->json() : [];
+        
+        // Fetch seasons
+        $responseSeasons = MediastreamService::request(
+            "/show/{$showId}/season", 
+            'get'
+        );
+        $seasons = $responseSeasons->successful() 
+            ? $responseSeasons->json() 
+            : [];
+        
+        // Fetch chapters for first season
+        $chapters = [];
+        if (!empty($data['seasons'][0]['_id'])) {
+            $responseChapter = MediastreamService::request(
+                "/show/{$showId}/season/{$data['seasons'][0]['_id']}/episode",
+                'get'
+            );
+            $chapters = $responseChapter->successful() 
+                ? $responseChapter->json('data') 
+                : [];
+        }
+        
+        return Inertia::render('(media)/series/[showId]/index', [
+            'data' => $data,
+            'showId' => $showId,
+            'seasons' => $seasons['data'],
+            'chapters' => $chapters,
+        ]);
+    }
+}
+```
+
+<Info>
+Inertia controllers return data that becomes props in Vue components. No need to build a separate API!
+</Info>
+
+### API Controllers
+
+API controllers return JSON responses for AJAX requests:
+
+```php
+<?php
+// app/Http/Controllers/Api/SeriesController.php
+
+namespace App\Http\Controllers\Api;
+
+use App\Http\Controllers\Controller;
+use App\Http\Services\MediastreamService;
+use Illuminate\Http\Request;
+
+class SeriesController extends Controller
+{
+    /**
+     * Display a listing of the resource.
+     */
+    public function index()
+    {
+        $response = MediastreamService::request('/show', 'get');
+        
+        return response()->json(
+            $response->json(),
+            $response->status()
+        );
+    }
+    
+    /**
+     * Store a newly created resource.
+     */
+    public function store(Request $request)
+    {
+        $validated = $request->validate([
+            'title' => 'required|string|max:255',
+            'type' => 'required|in:tvshow,movie',
+        ]);
+        
+        $response = MediastreamService::request('/show', 'post', $validated);
+        
+        return response()->json(
+            $response->json(),
+            $response->status()
+        );
+    }
+}
+```
+
+## Services
+
+### MediastreamService
+
+Centralized service for external API integration:
+
+```php
+<?php
+// app/Http/Services/MediastreamService.php
+
+namespace App\Http\Services;
+
+use Illuminate\Support\Facades\Http;
+use Illuminate\Http\Client\Response;
+
+class MediastreamService
+{
+    /**
+     * Make a request to the Mediastream API.
+     *
+     * @param string $endpoint API endpoint (e.g., '/show', '/show/123')
+     * @param string $method HTTP method (get, post, put, delete)
+     * @param array $data Request data
+     * @return Response
+     */
+    public static function request(
+        string $endpoint, 
+        string $method = 'get', 
+        array $data = []
+    ): Response {
+        $baseUrl = rtrim(env('MEDIASTREAM_API_URL'), '/');
+        $url = $baseUrl . '/' . ltrim($endpoint, '/');
+        
+        $client = Http::withHeaders([
+            'X-API-Token' => env('MEDIASTREAM_API_KEY'),
+            'Accept' => 'application/json',
+        ]);
+        
+        switch (strtolower($method)) {
+            case 'post':
+                return $client->post($url, $data);
+            case 'put':
+                return $client->put($url, $data);
+            case 'delete':
+                return $client->delete($url, $data);
+            default:
+                return $client->get($url, $data);
+        }
+    }
+}
+```
+
+**Environment Configuration:**
+
+```bash
+# .env
+MEDIASTREAM_API_URL=https://api.mediastream.example
+MEDIASTREAM_API_KEY=your-api-key-here
+```
+
+**Usage:**
+
+```php
+use App\Http\Services\MediastreamService;
+
+// GET request
+$response = MediastreamService::request('/show', 'get');
+
+// POST request
+$response = MediastreamService::request('/show', 'post', [
+    'title' => 'Breaking Bad',
+    'type' => 'tvshow',
+]);
+
+// Check response
+if ($response->successful()) {
+    $data = $response->json();
+} else {
+    $error = $response->body();
+}
+```
+
+<Note>
+All external API calls should go through `MediastreamService` for consistent authentication and error handling.
+</Note>
+
+## Routing
+
+### Resource Routes
+
+MediaStream uses Laravel resource routes with custom parameter names:
+
+```php
+<?php
+// routes/web.php
+
+use App\Http\Controllers\Web\{SeriesController, SeasonController, ChapterController};
+use Illuminate\Support\Facades\Route;
+
+Route::middleware('auth')->group(function () {
+    // Series routes
+    Route::resource('series', SeriesController::class)
+        ->parameters(['series' => 'showId']);
+    
+    // Nested season routes
+    Route::resource('series.seasons', SeasonController::class)
+        ->parameters([
+            'series' => 'showId',
+            'seasons' => 'seasonId',
+        ]);
+    
+    // Nested chapter routes
+    Route::resource('series.seasons.chapters', ChapterController::class)
+        ->parameters([
+            'series' => 'showId',
+            'seasons' => 'seasonId',
+            'chapters' => 'chapterId',
+        ]);
+});
+```
+
+This generates routes like:
+- `GET /series` → `SeriesController@index`
+- `GET /series/{showId}` → `SeriesController@show`
+- `GET /series/{showId}/seasons/{seasonId}` → `SeasonController@show`
+
+### API Routes
+
+```php
+<?php
+// routes/api.php
+
+use App\Http\Controllers\Api\{SeriesController, SeasonController};
+use Illuminate\Support\Facades\Route;
+
+Route::prefix('api')->as('api.')->group(function () {
+    Route::apiResource('series', SeriesController::class)
+        ->parameters(['series' => 'showId']);
+    
+    Route::apiResource('series.seasons', SeasonController::class)
+        ->parameters([
+            'series' => 'showId',
+            'seasons' => 'seasonId',
+        ]);
+});
+```
+
+API routes are prefixed with `/api` and return JSON responses.
+
+## Validation
+
+### Inline Validation
+
+```php
+public function store(Request $request)
+{
+    $validated = $request->validate([
+        'series_name' => 'required|string|max:255',
+        'series_type' => 'required|in:tvshow,movie',
+        'description' => 'nullable|string|max:1000',
+        'release_year' => 'nullable|integer|min:1900|max:' . date('Y'),
+    ]);
+    
+    // Use $validated data...
+}
+```
+
+### Form Request Classes
+
+For complex validation, use Form Request classes:
+
+```php
+<?php
+// app/Http/Requests/Settings/ProfileUpdateRequest.php
+
+namespace App\Http\Requests\Settings;
+
+use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
+
+class ProfileUpdateRequest extends FormRequest
+{
+    /**
+     * Determine if the user is authorized to make this request.
+     */
+    public function authorize(): bool
+    {
+        return true;
+    }
+    
+    /**
+     * Get the validation rules that apply to the request.
+     */
+    public function rules(): array
+    {
+        return [
+            'name' => ['required', 'string', 'max:255'],
+            'email' => [
+                'required', 
+                'string', 
+                'email', 
+                'max:255',
+                Rule::unique('users')->ignore($this->user()->id),
+            ],
+        ];
+    }
+}
+```
+
+**Usage:**
+
+```php
+public function update(ProfileUpdateRequest $request)
+{
+    $request->user()->update($request->validated());
+    
+    return back()->with('success', 'Profile updated successfully.');
+}
+```
+
+## Middleware
+
+### HandleInertiaRequests
+
+Shares global data with all Inertia pages:
+
+```php
+<?php
+// app/Http/Middleware/HandleInertiaRequests.php
+
+namespace App\Http\Middleware;
+
+use Illuminate\Foundation\Inspiring;
+use Illuminate\Http\Request;
+use Inertia\Middleware;
+
+class HandleInertiaRequests extends Middleware
+{
+    protected $rootView = 'app';
+    
+    public function share(Request $request): array
+    {
+        [$message, $author] = str(Inspiring::quotes()->random())
+            ->explode('-');
+        
+        return [
+            ...parent::share($request),
+            'name' => config('app.name'),
+            'quote' => [
+                'message' => trim($message), 
+                'author' => trim($author)
+            ],
+            'auth' => [
+                'user' => $request->user(),
+            ],
+            'sidebarOpen' => ! $request->hasCookie('sidebar_state') 
+                || $request->cookie('sidebar_state') === 'true',
+        ];
+    }
+}
+```
+
+This data is available in all Vue components via `$page.props`.
+
+<Info>
+Shared data is sent with every request. Keep it lightweight - only share what's needed globally.
+</Info>
+
+## Models
+
+### User Model
+
+```php
+<?php
+// app/Models/User.php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Foundation\Auth\User as Authenticatable;
+use Illuminate\Notifications\Notifiable;
+use Laravel\Fortify\TwoFactorAuthenticatable;
+
+class User extends Authenticatable
+{
+    use HasFactory, Notifiable, TwoFactorAuthenticatable;
+    
+    protected $fillable = [
+        'name',
+        'email',
+        'password',
+    ];
+    
+    protected $hidden = [
+        'password',
+        'two_factor_secret',
+        'two_factor_recovery_codes',
+        'remember_token',
+    ];
+    
+    protected function casts(): array
+    {
+        return [
+            'email_verified_at' => 'datetime',
+            'password' => 'hashed',
+            'two_factor_confirmed_at' => 'datetime',
+        ];
+    }
+}
+```
+
+## Authentication
+
+### Laravel Fortify
+
+MediaStream uses Laravel Fortify for authentication:
+
+```php
+<?php
+// app/Actions/Fortify/CreateNewUser.php
+
+namespace App\Actions\Fortify;
+
+use App\Models\User;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Validator;
+use Laravel\Fortify\Contracts\CreatesNewUsers;
+
+class CreateNewUser implements CreatesNewUsers
+{
+    use PasswordValidationRules;
+    
+    public function create(array $input): User
+    {
+        Validator::make($input, [
+            'name' => ['required', 'string', 'max:255'],
+            'email' => ['required', 'string', 'email', 'max:255', 'unique:users'],
+            'password' => $this->passwordRules(),
+        ])->validate();
+        
+        return User::create([
+            'name' => $input['name'],
+            'email' => $input['email'],
+            'password' => Hash::make($input['password']),
+        ]);
+    }
+}
+```
+
+**Features enabled:**
+- User registration
+- Login/logout
+- Password reset
+- Two-factor authentication (TOTP)
+- Password confirmation
+
+### Protecting Routes
+
+```php
+Route::middleware('auth')->group(function () {
+    // Authenticated routes
+});
+
+Route::middleware(['auth', 'verified'])->group(function () {
+    // Requires email verification
+});
+```
+
+## Testing
+
+MediaStream uses Pest PHP for testing:
+
+```php
+<?php
+// tests/Feature/SeriesTest.php
+
+use App\Models\User;
+use function Pest\Laravel\{actingAs, get, post};
+
+it('displays series index page', function () {
+    $user = User::factory()->create();
+    
+    actingAs($user)
+        ->get('/series')
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->component('(media)/series/index')
+            ->has('data')
+        );
+});
+
+it('creates a new series', function () {
+    $user = User::factory()->create();
+    
+    actingAs($user)
+        ->post('/series', [
+            'series_name' => 'Breaking Bad',
+            'series_type' => 'tvshow',
+        ])
+        ->assertRedirect('/series');
+});
+```
+
+**Run tests:**
+
+```bash
+php artisan test
+# or
+composer test
+```
+
+## Best Practices
+
+<AccordionGroup>
+  <Accordion title="Controller Design">
+    - Keep controllers thin - move business logic to services
+    - Return early for error conditions
+    - Use form requests for complex validation
+    - Type-hint dependencies for automatic injection
+  </Accordion>
+  
+  <Accordion title="Service Layer">
+    - Create services for complex business logic
+    - Make services testable by injecting dependencies
+    - Use static methods for simple utility functions
+    - Keep external API calls in dedicated service classes
+  </Accordion>
+  
+  <Accordion title="Validation">
+    - Always validate user input
+    - Use Form Request classes for reusable validation
+    - Return descriptive error messages
+    - Validate early, before processing data
+  </Accordion>
+  
+  <Accordion title="Error Handling">
+    - Check API response status before using data
+    - Return appropriate HTTP status codes
+    - Log errors for debugging
+    - Show user-friendly error messages
+  </Accordion>
+</AccordionGroup>
+
+## Development Tools
+
+### Laravel Pail
+
+Real-time log viewing:
+
+```bash
+php artisan pail
+```
+
+### Tinker
+
+Interactive REPL:
+
+```bash
+php artisan tinker
+>>> $user = User::first();
+>>> $user->name;
+```
+
+### Code Style
+
+Format code with Laravel Pint:
+
+```bash
+./vendor/bin/pint
+```
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Database Schema" icon="database" href="/development/database">
+    Learn about migrations and database structure
+  </Card>
+  <Card title="Frontend Development" icon="vuejs" href="/development/frontend">
+    Explore Vue.js components and TypeScript
+  </Card>
+</CardGroup>

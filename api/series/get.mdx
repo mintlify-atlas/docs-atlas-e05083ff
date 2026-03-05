@@ -1,0 +1,217 @@
+---
+title: 'Get Series'
+api: 'GET /api/series/{showId}'
+description: 'Retrieve details of a specific series by ID'
+---
+
+## Overview
+
+This endpoint retrieves detailed information about a specific series, including its metadata, associated images, and nested seasons.
+
+## Authentication
+
+This endpoint requires MediaStream API authentication using the `X-API-Token` header.
+
+<ParamField header="X-API-Token" type="string" required>
+  Your MediaStream API authentication token
+</ParamField>
+
+<ParamField header="Accept" type="string" default="application/json">
+  Content type for the response
+</ParamField>
+
+## Path Parameters
+
+<ParamField path="showId" type="string" required>
+  The unique identifier of the series to retrieve
+</ParamField>
+
+## Response
+
+<ResponseField name="_id" type="string">
+  Unique identifier for the series
+</ResponseField>
+
+<ResponseField name="title" type="string">
+  The title of the series
+</ResponseField>
+
+<ResponseField name="description" type="string">
+  Detailed description of the series
+</ResponseField>
+
+<ResponseField name="type" type="string">
+  Type of content (e.g., "tvshow")
+</ResponseField>
+
+<ResponseField name="images" type="array">
+  Array of image objects associated with the series
+  
+  <ResponseField name="_id" type="string">
+    Unique identifier for the image
+  </ResponseField>
+  
+  <ResponseField name="path" type="string">
+    Relative path to the image
+  </ResponseField>
+  
+  <ResponseField name="basePath" type="string">
+    Base path for the image, used with CDN URL
+  </ResponseField>
+</ResponseField>
+
+<ResponseField name="seasons" type="array">
+  Array of season objects associated with the series
+  
+  <ResponseField name="_id" type="string">
+    Unique identifier for the season
+  </ResponseField>
+  
+  <ResponseField name="title" type="string">
+    Title of the season (e.g., "Season 1")
+  </ResponseField>
+  
+  <ResponseField name="description" type="string">
+    Description of the season
+  </ResponseField>
+  
+  <ResponseField name="images" type="array">
+    Array of image objects for the season
+  </ResponseField>
+</ResponseField>
+
+<ResponseField name="created_at" type="string">
+  Timestamp when the series was created
+</ResponseField>
+
+<ResponseField name="updated_at" type="string">
+  Timestamp when the series was last updated
+</ResponseField>
+
+## Example Request
+
+<CodeGroup>
+
+```bash cURL
+curl -X GET "https://your-domain.com/api/series/507f1f77bcf86cd799439011" \
+  -H "X-API-Token: your_api_token" \
+  -H "Accept: application/json"
+```
+
+```javascript JavaScript
+const showId = '507f1f77bcf86cd799439011';
+
+const response = await fetch(`https://your-domain.com/api/series/${showId}`, {
+  method: 'GET',
+  headers: {
+    'X-API-Token': 'your_api_token',
+    'Accept': 'application/json'
+  }
+});
+
+const series = await response.json();
+console.log(series);
+```
+
+```php PHP
+$showId = '507f1f77bcf86cd799439011';
+
+$response = Http::withHeaders([
+    'X-API-Token' => env('MEDIASTREAM_API_KEY'),
+    'Accept' => 'application/json',
+])->get("https://your-domain.com/api/series/{$showId}");
+
+$series = $response->json();
+```
+
+```python Python
+import requests
+
+show_id = '507f1f77bcf86cd799439011'
+
+headers = {
+    'X-API-Token': 'your_api_token',
+    'Accept': 'application/json'
+}
+
+response = requests.get(
+    f'https://your-domain.com/api/series/{show_id}',
+    headers=headers
+)
+
+series = response.json()
+print(series)
+```
+
+</CodeGroup>
+
+## Example Response
+
+```json
+{
+  "_id": "507f1f77bcf86cd799439011",
+  "title": "Breaking Bad",
+  "description": "A high school chemistry teacher turned methamphetamine producer partners with a former student to manufacture and distribute crystal meth.",
+  "type": "tvshow",
+  "images": [
+    {
+      "_id": "507f1f77bcf86cd799439012",
+      "path": "/images/breaking-bad-poster.jpg",
+      "basePath": "/platform-static/images/breaking-bad-poster.jpg"
+    },
+    {
+      "_id": "507f1f77bcf86cd799439013",
+      "path": "/images/breaking-bad-banner.jpg",
+      "basePath": "/platform-static/images/breaking-bad-banner.jpg"
+    }
+  ],
+  "seasons": [
+    {
+      "_id": "507f1f77bcf86cd799439014",
+      "title": "Season 1",
+      "description": "High school chemistry teacher Walter White's life is suddenly transformed.",
+      "images": [
+        {
+          "_id": "507f1f77bcf86cd799439015",
+          "path": "/images/breaking-bad-s1.jpg",
+          "basePath": "/platform-static/images/breaking-bad-s1.jpg"
+        }
+      ]
+    },
+    {
+      "_id": "507f1f77bcf86cd799439016",
+      "title": "Season 2",
+      "description": "Walt and Jesse realize how dire their situation is.",
+      "images": []
+    }
+  ],
+  "created_at": "2024-01-15T08:30:00Z",
+  "updated_at": "2024-03-05T10:30:00Z"
+}
+```
+
+## Response Status Codes
+
+<ResponseField name="200" type="Success">
+  Successfully retrieved the series details
+</ResponseField>
+
+<ResponseField name="401" type="Unauthorized">
+  Invalid or missing API token
+</ResponseField>
+
+<ResponseField name="404" type="Not Found">
+  Series with the specified ID does not exist
+</ResponseField>
+
+<ResponseField name="500" type="Internal Server Error">
+  An error occurred while fetching the series from MediaStream
+</ResponseField>
+
+## Notes
+
+- The endpoint proxies requests to the MediaStream platform API at `/show/{showId}`
+- Image URLs can be constructed using: `https://platform-static.cdn.mdstrm.com{basePath}`
+- The response includes nested season data with the series
+- Series are internally referred to as "shows" in the route parameters and backend code
+- To get episodes for a season, use the nested episodes endpoint: `/api/series/{showId}/seasons/{seasonId}/chapters`

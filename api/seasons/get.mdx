@@ -1,0 +1,190 @@
+---
+title: 'Get Season'
+description: 'Retrieve details of a specific season'
+api: 'GET /api/series/{showId}/seasons/{seasonId}'
+---
+
+## Overview
+
+Retrieves detailed information about a specific season, including its title, description, and associated images. This endpoint is useful for displaying season details and managing individual season content.
+
+## Endpoint
+
+```
+GET /api/series/{showId}/seasons/{seasonId}
+```
+
+## Path Parameters
+
+<ParamField path="showId" type="string" required>
+  The unique identifier of the series that contains the season. This is the MongoDB ObjectId of the parent series.
+</ParamField>
+
+<ParamField path="seasonId" type="string" required>
+  The unique identifier of the season to retrieve. This is the MongoDB ObjectId of the season.
+</ParamField>
+
+## Response
+
+<ResponseField name="_id" type="string">
+  Unique identifier for the season (MongoDB ObjectId)
+</ResponseField>
+
+<ResponseField name="title" type="string">
+  The title of the season
+</ResponseField>
+
+<ResponseField name="description" type="string">
+  A description of the season's content and themes
+</ResponseField>
+
+<ResponseField name="images" type="array">
+  Array of image objects associated with the season
+  
+  <ResponseField name="_id" type="string">
+    Unique identifier for the image
+  </ResponseField>
+  
+  <ResponseField name="path" type="string">
+    Relative path to the image file
+  </ResponseField>
+  
+  <ResponseField name="basePath" type="string">
+    Base path for constructing the full CDN URL. Prepend `https://platform-static.cdn.mdstrm.com` to access the image.
+  </ResponseField>
+</ResponseField>
+
+## Example Request
+
+```bash
+curl -X GET "https://your-domain.com/api/series/507f1f77bcf86cd799439011/seasons/507f191e810c19729de860ea" \
+  -H "Accept: application/json"
+```
+
+## Example Response
+
+```json
+{
+  "_id": "507f191e810c19729de860ea",
+  "title": "Season 1",
+  "description": "The first season introduces the main characters and establishes the core storyline",
+  "images": [
+    {
+      "_id": "507f191e810c19729de860eb",
+      "path": "/seasons/season1-cover.jpg",
+      "basePath": "/images/seasons/507f191e810c19729de860ea/season1-cover.jpg"
+    }
+  ]
+}
+```
+
+## Image URL Construction
+
+To display season cover images, construct the full URL by combining the CDN base URL with the `basePath`:
+
+```javascript
+const imageUrl = (season) => {
+  const basePath = season?.images?.[0]?.basePath
+  return basePath
+    ? `https://platform-static.cdn.mdstrm.com${basePath}`
+    : 'https://mxplus.tv/images/mini-78.png' // fallback image
+}
+```
+
+See `resources/js/components/template/series/season-template.vue` for the frontend implementation.
+
+## Error Responses
+
+<ResponseField name="error" type="object">
+  Error object returned when the request fails
+  
+  <ResponseField name="message" type="string">
+    Description of the error
+  </ResponseField>
+  
+  <ResponseField name="status" type="number">
+    HTTP status code
+  </ResponseField>
+</ResponseField>
+
+### 404 Not Found
+
+Returned when the series or season does not exist:
+
+```json
+{
+  "error": {
+    "message": "Season not found",
+    "status": 404
+  }
+}
+```
+
+### 400 Bad Request
+
+Returned when the IDs are invalid:
+
+```json
+{
+  "error": {
+    "message": "Invalid season ID or series ID",
+    "status": 400
+  }
+}
+```
+
+### 500 Internal Server Error
+
+Returned when there's a server-side error:
+
+```json
+{
+  "error": {
+    "message": "Internal server error",
+    "status": 500
+  }
+}
+```
+
+## Implementation Notes
+
+- The endpoint is implemented in `app/Http/Controllers/Api/SeasonController.php` in the `show` method
+- Both `showId` and `seasonId` are extracted from the route parameters
+- The request is proxied to the MediaStream API at `/show/{showId}/season/{seasonId}`
+- The controller returns the raw JSON response from the MediaStream service
+
+## Controller Implementation
+
+From `app/Http/Controllers/Api/SeasonController.php`:
+
+```php
+public function show(Request $request)
+{
+    $showId = $request->route('showId');
+    $seasonId = $request->route('seasonId');
+
+    $response = MediastreamService::request(
+        '/show/' . $showId . '/season/' . $seasonId,
+        'get'
+    );
+
+    return $response->json();
+}
+```
+
+## Related Endpoints
+
+<CardGroup cols={2}>
+  <Card title="List Seasons" icon="list" href="/api/seasons/list">
+    View all seasons for a series
+  </Card>
+  <Card title="Update Season" icon="pen" href="/api/seasons/update">
+    Modify season information
+  </Card>
+  <Card title="Delete Season" icon="trash" href="/api/seasons/delete">
+    Remove the season
+  </Card>
+  <Card title="List Episodes" icon="play" href="/api/episodes/list">
+    View episodes in this season
+  </Card>
+</CardGroup>

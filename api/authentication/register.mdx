@@ -1,0 +1,399 @@
+---
+title: 'Register'
+description: 'Create a new user account'
+api: 'POST /register'
+---
+
+## Overview
+
+Create a new user account in MediaStream. Upon successful registration, the user is automatically authenticated and a session is created.
+
+<Warning>
+  Registration must be enabled in the Fortify configuration (`Features::registration()`).
+</Warning>
+
+## Endpoint
+
+```http
+POST /register
+```
+
+## Request Headers
+
+<ParamField header="X-XSRF-TOKEN" type="string" required>
+  CSRF token retrieved from `/sanctum/csrf-cookie`
+</ParamField>
+
+<ParamField header="Content-Type" type="string" required>
+  Must be `application/json`
+</ParamField>
+
+<ParamField header="Accept" type="string" required>
+  Must be `application/json`
+</ParamField>
+
+## Request Body
+
+<ParamField body="name" type="string" required>
+  User's full name
+  
+  **Constraints:**
+  - Maximum 255 characters
+  - Cannot be empty
+</ParamField>
+
+<ParamField body="email" type="string" required>
+  User's email address (automatically converted to lowercase)
+  
+  **Constraints:**
+  - Must be a valid email format
+  - Must be unique (not already registered)
+  - Maximum 255 characters
+</ParamField>
+
+<ParamField body="password" type="string" required>
+  User's password
+  
+  **Constraints:**
+  - Minimum 8 characters
+  - Must meet Laravel's default password rules
+  - Cannot be a commonly used password
+</ParamField>
+
+<ParamField body="password_confirmation" type="string" required>
+  Password confirmation (must match `password` field)
+</ParamField>
+
+## Response
+
+<Tabs>
+  <Tab title="201 - Created">
+    User account created successfully. The user is automatically logged in.
+
+    ```json
+    {
+      "id": 1,
+      "name": "John Doe",
+      "email": "john@example.com",
+      "email_verified_at": null,
+      "created_at": "2026-03-05T18:30:00.000000Z",
+      "updated_at": "2026-03-05T18:30:00.000000Z"
+    }
+    ```
+
+    <ResponseField name="id" type="integer">
+      Unique user identifier
+    </ResponseField>
+
+    <ResponseField name="name" type="string">
+      User's full name
+    </ResponseField>
+
+    <ResponseField name="email" type="string">
+      User's email address (lowercase)
+    </ResponseField>
+
+    <ResponseField name="email_verified_at" type="string | null">
+      Timestamp of email verification (null if not verified)
+    </ResponseField>
+
+    <ResponseField name="created_at" type="string">
+      Account creation timestamp (ISO 8601)
+    </ResponseField>
+
+    <ResponseField name="updated_at" type="string">
+      Last update timestamp (ISO 8601)
+    </ResponseField>
+
+    **Set-Cookie Header:**
+    ```
+    Set-Cookie: laravel_session=...; Path=/; HttpOnly; SameSite=Lax
+    ```
+  </Tab>
+
+  <Tab title="422 - Validation Error">
+    Validation failed for one or more fields.
+
+    ```json
+    {
+      "message": "The given data was invalid.",
+      "errors": {
+        "name": [
+          "The name field is required."
+        ],
+        "email": [
+          "The email has already been taken."
+        ],
+        "password": [
+          "The password must be at least 8 characters.",
+          "The password confirmation does not match."
+        ]
+      }
+    }
+    ```
+
+    <ResponseField name="message" type="string">
+      General error message
+    </ResponseField>
+
+    <ResponseField name="errors" type="object">
+      Field-specific validation errors with array of error messages
+    </ResponseField>
+  </Tab>
+</Tabs>
+
+## Validation Rules
+
+### Name Field
+- Required
+- Must be a string
+- Maximum 255 characters
+
+### Email Field
+- Required
+- Must be a valid email format
+- Must be unique (case-insensitive)
+- Maximum 255 characters
+- Automatically converted to lowercase
+
+### Password Field
+- Required
+- Minimum 8 characters
+- Must not be a commonly used password
+- Must be confirmed (match `password_confirmation`)
+
+## Code Examples
+
+<CodeGroup>
+
+```javascript JavaScript (Fetch)
+// Step 1: Get CSRF cookie
+await fetch('https://your-domain.com/sanctum/csrf-cookie', {
+  credentials: 'include'
+});
+
+// Step 2: Get CSRF token
+const csrfToken = document.cookie
+  .split('; ')
+  .find(row => row.startsWith('XSRF-TOKEN='))
+  ?.split('=')[1];
+
+// Step 3: Register
+const response = await fetch('https://your-domain.com/register', {
+  method: 'POST',
+  headers: {
+    'Content-Type': 'application/json',
+    'Accept': 'application/json',
+    'X-XSRF-TOKEN': decodeURIComponent(csrfToken)
+  },
+  credentials: 'include',
+  body: JSON.stringify({
+    name: 'John Doe',
+    email: 'john@example.com',
+    password: 'SecurePass123!',
+    password_confirmation: 'SecurePass123!'
+  })
+});
+
+if (response.ok) {
+  const user = await response.json();
+  console.log('Registration successful:', user);
+  // User is now authenticated
+} else {
+  const errors = await response.json();
+  console.error('Registration failed:', errors);
+}
+```
+
+```bash cURL
+# Step 1: Get CSRF cookie
+curl -X GET 'https://your-domain.com/sanctum/csrf-cookie' \
+  -c cookies.txt
+
+# Step 2: Register
+curl -X POST 'https://your-domain.com/register' \
+  -b cookies.txt \
+  -c cookies.txt \
+  -H 'Content-Type: application/json' \
+  -H 'Accept: application/json' \
+  -H "X-XSRF-TOKEN: $(grep XSRF-TOKEN cookies.txt | cut -f7)" \
+  -d '{
+    "name": "John Doe",
+    "email": "john@example.com",
+    "password": "SecurePass123!",
+    "password_confirmation": "SecurePass123!"
+  }'
+```
+
+```php PHP
+use Illuminate\Support\Facades\Http;
+
+$cookieJar = new \GuzzleHttp\Cookie\CookieJar();
+
+// Get CSRF cookie
+Http::withOptions(['cookies' => $cookieJar])
+    ->get('https://your-domain.com/sanctum/csrf-cookie');
+
+// Register
+$response = Http::withOptions(['cookies' => $cookieJar])
+    ->post('https://your-domain.com/register', [
+        'name' => 'John Doe',
+        'email' => 'john@example.com',
+        'password' => 'SecurePass123!',
+        'password_confirmation' => 'SecurePass123!',
+    ]);
+
+if ($response->successful()) {
+    $user = $response->json();
+    // User created and authenticated
+}
+```
+
+```python Python
+import requests
+
+session = requests.Session()
+
+# Get CSRF cookie
+session.get('https://your-domain.com/sanctum/csrf-cookie')
+
+# Register
+response = session.post(
+    'https://your-domain.com/register',
+    json={
+        'name': 'John Doe',
+        'email': 'john@example.com',
+        'password': 'SecurePass123!',
+        'password_confirmation': 'SecurePass123!'
+    },
+    headers={
+        'Accept': 'application/json',
+        'X-XSRF-TOKEN': session.cookies.get('XSRF-TOKEN')
+    }
+)
+
+if response.ok:
+    user = response.json()
+    print(f"Registration successful: {user}")
+else:
+    errors = response.json()
+    print(f"Registration failed: {errors}")
+```
+
+</CodeGroup>
+
+## Password Requirements
+
+MediaStream uses Laravel's default password validation rules:
+
+<Steps>
+  <Step title="Minimum Length">
+    Password must be at least **8 characters** long
+  </Step>
+  <Step title="Not Compromised">
+    Password must not appear in data breaches (checked against haveibeenpwned.com)
+  </Step>
+  <Step title="Confirmation">
+    Password must match the `password_confirmation` field
+  </Step>
+</Steps>
+
+<Tip>
+  Encourage users to create strong passwords with a mix of uppercase, lowercase, numbers, and special characters.
+</Tip>
+
+## Post-Registration
+
+After successful registration:
+
+1. **User is authenticated** - A session is automatically created
+2. **Email verification** - If enabled, user will need to verify their email
+3. **Redirect** - Frontend typically redirects to `/dashboard`
+
+### Email Verification
+
+If email verification is enabled (`Features::emailVerification()`), the user must verify their email before accessing protected routes.
+
+**Verification endpoint:**
+```http
+GET /email/verify/{id}/{hash}
+```
+
+## Common Errors
+
+<AccordionGroup>
+  <Accordion title="Email already taken">
+    ```json
+    {
+      "errors": {
+        "email": ["The email has already been taken."]
+      }
+    }
+    ```
+    The email address is already registered. User should login instead or use password reset if they forgot their password.
+  </Accordion>
+
+  <Accordion title="Password too short">
+    ```json
+    {
+      "errors": {
+        "password": ["The password must be at least 8 characters."]
+      }
+    }
+    ```
+    Password must meet minimum length requirement.
+  </Accordion>
+
+  <Accordion title="Password confirmation mismatch">
+    ```json
+    {
+      "errors": {
+        "password": ["The password confirmation does not match."]
+      }
+    }
+    ```
+    The `password` and `password_confirmation` fields must be identical.
+  </Accordion>
+
+  <Accordion title="Registration disabled">
+    If registration is disabled in the Fortify configuration, the endpoint will return a 404 error.
+  </Accordion>
+</AccordionGroup>
+
+## Database Schema
+
+New users are created with the following fields:
+
+```sql
+CREATE TABLE users (
+    id BIGINT PRIMARY KEY AUTO_INCREMENT,
+    name VARCHAR(255) NOT NULL,
+    email VARCHAR(255) UNIQUE NOT NULL,
+    email_verified_at TIMESTAMP NULL,
+    password VARCHAR(255) NOT NULL,
+    remember_token VARCHAR(100) NULL,
+    two_factor_secret TEXT NULL,
+    two_factor_recovery_codes TEXT NULL,
+    two_factor_confirmed_at TIMESTAMP NULL,
+    created_at TIMESTAMP NULL,
+    updated_at TIMESTAMP NULL
+);
+```
+
+<Info>
+  Passwords are automatically hashed using bcrypt before storage. The plain text password is never stored.
+</Info>
+
+## Related Endpoints
+
+<CardGroup cols={3}>
+  <Card title="Login" icon="right-to-bracket" href="/api/authentication/login">
+    Authenticate existing users
+  </Card>
+  <Card title="Email Verification" icon="envelope-circle-check">
+    Verify email address
+  </Card>
+  <Card title="Profile Settings" icon="user-gear">
+    Update user profile
+  </Card>
+</CardGroup>

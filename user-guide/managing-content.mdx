@@ -1,0 +1,300 @@
+---
+title: 'Managing Content'
+description: 'Organize and manage your series, seasons, and episodes'
+icon: 'folders'
+---
+
+## Overview
+
+MediaStream provides comprehensive tools to manage your media content across series, seasons, and episodes. This guide covers all aspects of content management, from viewing to editing and organizing your media library.
+
+## Series Management
+
+### Viewing All Series
+
+The Series list page displays all your content in a responsive grid layout:
+
+- **Grid View**: Auto-fit layout with minimum 200px card width
+- **Series Cards**: Each card includes:
+  - Cover image (aspect-video format)
+  - Series title
+  - Series description
+  - Hover effects for better interaction
+
+<Tip>
+Hover over any series card to see a subtle scale animation and overlay effect, indicating it's clickable.
+</Tip>
+
+### Series Card Features
+
+<CardGroup cols={2}>
+  <Card title="Visual Feedback" icon="eye">
+    Hover states provide immediate visual feedback with scale transforms and overlay effects
+  </Card>
+  <Card title="Quick Access" icon="bolt">
+    Click any series card to navigate directly to its detail page
+  </Card>
+  <Card title="Image Fallback" icon="image">
+    Default placeholder images ensure professional appearance even without custom uploads
+  </Card>
+  <Card title="Responsive Design" icon="mobile">
+    Grid automatically adjusts to your screen size for optimal viewing
+  </Card>
+</CardGroup>
+
+## Season Management
+
+Seasons organize episodes within a series and provide logical groupings for your content.
+
+### Viewing Seasons
+
+On the series detail page, seasons appear in the left panel:
+
+<Steps>
+  <Step title="Season Selector">
+    Use the dropdown menu (280px width) to switch between different seasons:
+    
+    - Shows current season title as placeholder
+    - Lists all available seasons
+    - Click to select and view episodes
+  </Step>
+
+  <Step title="Season Cards">
+    Each season displays as a card with:
+    
+    - **Title**: Season name at the top
+    - **Description**: Overview of season content
+    - **Cover Image**: Full-width image (height: 288px)
+    - **Edit Button**: Pencil icon for quick edits
+  </Step>
+</Steps>
+
+### Adding New Seasons
+
+<Steps>
+  <Step title="Click Add Button">
+    Click the **Plus (+)** icon button next to the season dropdown.
+    
+    - Button size: 32px square (w-8 aspect-square)
+    - Background: Secondary color with hover effect
+    - Icon size: 24px
+  </Step>
+
+  <Step title="Fill Season Form">
+    On the creation page, provide:
+    
+    **Title** (Required)
+    - Name your season clearly
+    - Example: "Season 2", "Winter 2024"
+    
+    **Description** (Required)
+    - Describe the season's content
+    - Help viewers know what to expect
+  </Step>
+
+  <Step title="Submit">
+    Click **Añadir temporada** to create the season.
+    
+    The form resets automatically on success.
+  </Step>
+</Steps>
+
+### Editing Seasons
+
+From the series detail page:
+
+1. Locate the season card you want to edit
+2. Click the **Pencil icon** in the top-right corner
+3. Update the season information
+4. Save your changes
+
+<Note>
+The edit button has a hover effect (bg-content-3) for better user experience and clear interaction feedback.
+</Note>
+
+## Episode Management
+
+### Viewing Episodes
+
+Episodes are displayed in the right panel of the series detail page:
+
+**Episode Card Layout**:
+- **Thumbnail**: 25% width, aspect-video format
+- **Content Area**: Remaining 75% width with:
+  - Episode title (large size)
+  - Episode description (base size)
+- **Clickable**: Entire card navigates to episode detail view
+
+### Episode Information Display
+
+Each episode card shows:
+
+<CardGroup cols={3}>
+  <Card title="Visual Preview" icon="play">
+    Thumbnail image with 16:9 aspect ratio for consistent display
+  </Card>
+  <Card title="Title" icon="heading">
+    Episode name in prominent typography
+  </Card>
+  <Card title="Description" icon="align-left">
+    Brief overview of episode content
+  </Card>
+</CardGroup>
+
+### Episode Actions
+
+Click on any episode card to:
+
+- View full episode details
+- Access chapter information
+- Manage episode settings
+- View streaming analytics
+
+## Content Navigation
+
+### Breadcrumb Navigation
+
+MediaStream uses breadcrumbs to help you navigate the content hierarchy:
+
+```
+Series > [Series Name] > Temporadas > [Season Name] > [Episode Name]
+```
+
+Click any breadcrumb level to navigate back to that section.
+
+### Sidebar Navigation
+
+The persistent sidebar provides quick access:
+
+- **Dashboard**: Return to overview
+- **Series**: Access series list
+- **Media**: Upload and manage video files
+
+<Tip>
+The sidebar is collapsible. Click the toggle icon to expand or collapse it, giving you more screen space when managing content.
+</Tip>
+
+## Media Upload and Management
+
+### Uploading Video Files
+
+MediaStream supports chunked video uploads for large files:
+
+<Steps>
+  <Step title="Navigate to Upload">
+    Access the media upload section from the navigation menu.
+  </Step>
+
+  <Step title="Select Video File">
+    Click the file input and choose your video:
+    
+    - Accepted format: **MP4**
+    - Large files supported through chunked upload
+    - Chunk size: 10MB per chunk
+  </Step>
+
+  <Step title="Monitor Progress">
+    Watch the upload progress bar:
+    
+    - Real-time progress percentage
+    - Visual progress indicator
+    - Shows completion status
+  </Step>
+
+  <Step title="Upload Completion">
+    When the upload reaches 100%, your video is successfully uploaded to the platform.
+  </Step>
+</Steps>
+
+### Upload Technical Details
+
+The upload system features:
+
+- **Chunked Uploads**: Files split into 10MB chunks for reliability
+- **Progress Tracking**: Real-time upload progress with percentage
+- **CDN Integration**: Files stored on MediaStream CDN
+- **Error Handling**: Automatic retry on chunk failure
+
+<Warning>
+Do not close the browser window or navigate away during upload. This will interrupt the upload process and you'll need to start over.
+</Warning>
+
+## Content Organization Best Practices
+
+<CardGroup cols={2}>
+  <Card title="Logical Grouping" icon="sitemap">
+    Organize episodes into seasons based on themes, release dates, or content types
+  </Card>
+  <Card title="Consistent Naming" icon="input-text">
+    Use clear, consistent naming conventions across series, seasons, and episodes
+  </Card>
+  <Card title="Quality Images" icon="image">
+    Upload high-quality cover images for better viewer engagement
+  </Card>
+  <Card title="Detailed Descriptions" icon="file-alt">
+    Write comprehensive descriptions to help viewers discover content
+  </Card>
+</CardGroup>
+
+## Searching and Filtering
+
+While viewing your content:
+
+- Browse the grid view for visual discovery
+- Use the season selector to filter episodes by season
+- Navigate through breadcrumbs for hierarchical browsing
+
+## Content Status and Visibility
+
+### Image Handling
+
+The platform automatically manages images:
+
+- **CDN Delivery**: Images served from `platform-static.cdn.mdstrm.com`
+- **Fallback Images**: Default placeholder if no custom image uploaded
+- **Lazy Loading**: Images load efficiently as you scroll
+- **Hover Effects**: Smooth transitions on interaction
+
+### Content Display
+
+All content includes:
+
+- Responsive layouts that adapt to screen size
+- Smooth transitions and animations
+- Clear visual hierarchy
+- Intuitive interaction patterns
+
+<Note>
+The platform uses a grid system with auto-fit columns, ensuring your content displays beautifully on any screen size.
+</Note>
+
+## Troubleshooting
+
+<AccordionGroup>
+  <Accordion title="Series or season not appearing">
+    Make sure you've completed all required fields when creating content. Refresh the page to see newly added items.
+  </Accordion>
+  
+  <Accordion title="Images not loading">
+    Check your internet connection. The platform uses CDN for image delivery. If images still don't load, try clearing your browser cache.
+  </Accordion>
+  
+  <Accordion title="Upload failing">
+    Ensure your video file is in MP4 format. For very large files, make sure you have a stable internet connection throughout the upload process.
+  </Accordion>
+  
+  <Accordion title="Can't edit content">
+    Verify you're logged in and have the necessary permissions. Try refreshing the page if edit buttons aren't responding.
+  </Accordion>
+</AccordionGroup>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Create Series" icon="plus" href="./creating-series">
+    Learn how to create new series and organize your content
+  </Card>
+  <Card title="User Settings" icon="gear" href="./settings">
+    Customize your profile and preferences
+  </Card>
+</CardGroup>

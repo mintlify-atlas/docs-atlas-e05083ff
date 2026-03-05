@@ -1,0 +1,233 @@
+---
+title: 'Delete Season'
+description: 'Remove a season from a series'
+api: 'DELETE /api/series/{showId}/seasons/{seasonId}'
+---
+
+## Overview
+
+Permanently deletes a season from a series. This action removes the season and may affect associated episodes depending on your MediaStream configuration.
+
+<Warning>
+  This action is irreversible. Deleting a season may also affect or remove all episodes associated with it. Make sure to back up any important data before deleting a season.
+</Warning>
+
+## Endpoint
+
+```
+DELETE /api/series/{showId}/seasons/{seasonId}
+```
+
+## Path Parameters
+
+<ParamField path="showId" type="string" required>
+  The unique identifier of the series that contains the season. This is the MongoDB ObjectId of the parent series.
+</ParamField>
+
+<ParamField path="seasonId" type="string" required>
+  The unique identifier of the season to delete. This is the MongoDB ObjectId of the season.
+</ParamField>
+
+## Response
+
+<ResponseField name="success" type="boolean">
+  Indicates whether the deletion was successful
+</ResponseField>
+
+<ResponseField name="message" type="string">
+  Confirmation message about the deletion
+</ResponseField>
+
+## Example Request
+
+```bash
+curl -X DELETE "https://your-domain.com/api/series/507f1f77bcf86cd799439011/seasons/507f191e810c19729de860ea" \
+  -H "Accept: application/json"
+```
+
+## Example Response
+
+```json
+{
+  "success": true,
+  "message": "Season deleted successfully"
+}
+```
+
+## Error Responses
+
+<ResponseField name="error" type="object">
+  Error object returned when the request fails
+  
+  <ResponseField name="message" type="string">
+    Description of the error
+  </ResponseField>
+  
+  <ResponseField name="status" type="number">
+    HTTP status code
+  </ResponseField>
+</ResponseField>
+
+### 404 Not Found
+
+Returned when the series or season does not exist:
+
+```json
+{
+  "error": {
+    "message": "Season not found",
+    "status": 404
+  }
+}
+```
+
+### 400 Bad Request
+
+Returned when the season cannot be deleted (e.g., invalid ID format):
+
+```json
+{
+  "error": {
+    "message": "Invalid season ID or series ID",
+    "status": 400
+  }
+}
+```
+
+### 409 Conflict
+
+Returned when the season cannot be deleted due to dependencies:
+
+```json
+{
+  "error": {
+    "message": "Cannot delete season with active episodes. Please remove all episodes first.",
+    "status": 409
+  }
+}
+```
+
+### 500 Internal Server Error
+
+Returned when there's a server-side error:
+
+```json
+{
+  "error": {
+    "message": "Failed to delete season",
+    "status": 500
+  }
+}
+```
+
+## Implementation Notes
+
+- The endpoint is implemented in `app/Http/Controllers/Api/SeasonController.php` in the `destroy` method
+- The deletion request is proxied to the MediaStream API service
+- Both `showId` and `seasonId` must be valid MongoDB ObjectIds
+- The season must exist and belong to the specified series
+- Deletion behavior for associated episodes depends on MediaStream configuration
+
+## Controller Implementation
+
+From `app/Http/Controllers/Api/SeasonController.php`:
+
+```php
+public function destroy(Request $request)
+{
+    $showId = $request->route('showId');
+    $seasonId = $request->route('seasonId');
+
+    $response = MediastreamService::request(
+        '/show/' . $showId . '/season/' . $seasonId,
+        'delete'
+    );
+
+    return $response->json();
+}
+```
+
+## Best Practices
+
+<AccordionGroup>
+  <Accordion title="Before Deleting">
+    Before deleting a season, consider:
+    
+    1. **Check for episodes**: Verify if the season contains any episodes that should be preserved or moved to another season
+    2. **Backup data**: Export or backup season metadata and episode information
+    3. **User notification**: If the content is public, notify users before removing accessible content
+    4. **Analytics**: Save any analytics or viewing data associated with the season
+  </Accordion>
+  
+  <Accordion title="Alternative to Deletion">
+    Instead of permanently deleting a season, consider:
+    
+    - **Archive**: Mark the season as archived or hidden rather than deleting it
+    - **Status flag**: Add a status field to indicate the season is no longer active
+    - **Soft delete**: Implement soft deletion to allow recovery if needed
+    
+    Note: These alternatives would require custom implementation beyond this API endpoint.
+  </Accordion>
+  
+  <Accordion title="Cascade Effects">
+    Deleting a season may have cascading effects:
+    
+    - **Episodes**: Associated episodes may be deleted or orphaned
+    - **User data**: Viewing history and progress tracking may be affected
+    - **URLs**: Any direct links to the season will break
+    - **Navigation**: Series navigation in the frontend will need to update
+    
+    Ensure your application handles these scenarios appropriately.
+  </Accordion>
+</AccordionGroup>
+
+## Confirmation Workflow
+
+For a better user experience, implement a confirmation workflow before deletion:
+
+```javascript
+const deleteSeason = async (showId, seasonId) => {
+  // Show confirmation dialog
+  const confirmed = await showConfirmDialog({
+    title: 'Delete Season?',
+    message: 'This will permanently delete the season and all its episodes. This action cannot be undone.',
+    confirmText: 'Delete',
+    cancelText: 'Cancel',
+    variant: 'danger'
+  });
+  
+  if (!confirmed) return;
+  
+  try {
+    const response = await fetch(
+      `/api/series/${showId}/seasons/${seasonId}`,
+      { method: 'DELETE' }
+    );
+    
+    if (response.ok) {
+      showNotification('Season deleted successfully', 'success');
+      // Redirect or refresh the series view
+      window.location.href = `/series/${showId}`;
+    }
+  } catch (error) {
+    showNotification('Failed to delete season', 'error');
+  }
+};
+```
+
+## Related Endpoints
+
+<CardGroup cols={2}>
+  <Card title="Get Season" icon="eye" href="/api/seasons/get">
+    View season details before deletion
+  </Card>
+  <Card title="List Seasons" icon="list" href="/api/seasons/list">
+    View all seasons in the series
+  </Card>
+  <Card title="List Episodes" icon="play" href="/api/episodes/list">
+    Check episodes before deleting
+  </Card>
+  <Card title="Create Season" icon="plus" href="/api/seasons/create">
+    Create a new season
+  </Card>
+</CardGroup>

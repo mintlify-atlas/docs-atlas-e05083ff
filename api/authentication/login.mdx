@@ -1,0 +1,309 @@
+---
+title: 'Login'
+description: 'Authenticate users with email and password'
+api: 'POST /login'
+---
+
+## Overview
+
+Authenticate a user with their email address and password. On success, creates an authenticated session.
+
+If the user has two-factor authentication enabled, you'll need to complete the [two-factor challenge](/api/authentication/two-factor) flow.
+
+<Note>
+  Before making this request, you must retrieve a CSRF token from `/sanctum/csrf-cookie`.
+</Note>
+
+## Endpoint
+
+```http
+POST /login
+```
+
+## Request Headers
+
+<ParamField header="X-XSRF-TOKEN" type="string" required>
+  CSRF token retrieved from cookie
+</ParamField>
+
+<ParamField header="Content-Type" type="string" required>
+  Must be `application/json`
+</ParamField>
+
+<ParamField header="Accept" type="string" required>
+  Must be `application/json`
+</ParamField>
+
+## Request Body
+
+<ParamField body="email" type="string" required>
+  User's email address (converted to lowercase)
+</ParamField>
+
+<ParamField body="password" type="string" required>
+  User's password
+</ParamField>
+
+<ParamField body="remember" type="boolean">
+  Whether to keep the user logged in ("Remember Me" functionality)
+  
+  Default: `false`
+</ParamField>
+
+## Response
+
+<Tabs>
+  <Tab title="200 - Success">
+    Successful authentication. The response includes a session cookie.
+
+    ```json
+    {
+      "two_factor": false
+    }
+    ```
+
+    <ResponseField name="two_factor" type="boolean">
+      Indicates if two-factor authentication is required. If `true`, you must complete the two-factor challenge.
+    </ResponseField>
+
+    **Set-Cookie Header:**
+    ```
+    Set-Cookie: laravel_session=...; Path=/; HttpOnly; SameSite=Lax
+    ```
+  </Tab>
+
+  <Tab title="200 - 2FA Required">
+    User has two-factor authentication enabled. Complete the two-factor challenge to finish authentication.
+
+    ```json
+    {
+      "two_factor": true
+    }
+    ```
+
+    See [Two-Factor Challenge](/api/authentication/two-factor#two-factor-challenge) for next steps.
+  </Tab>
+
+  <Tab title="422 - Validation Error">
+    Invalid credentials or validation errors.
+
+    ```json
+    {
+      "message": "The given data was invalid.",
+      "errors": {
+        "email": [
+          "These credentials do not match our records."
+        ]
+      }
+    }
+    ```
+
+    <ResponseField name="message" type="string">
+      Error message summary
+    </ResponseField>
+
+    <ResponseField name="errors" type="object">
+      Field-specific validation errors
+    </ResponseField>
+  </Tab>
+
+  <Tab title="429 - Rate Limited">
+    Too many login attempts. Rate limit: **5 requests per minute** per email and IP address.
+
+    ```json
+    {
+      "message": "Too many login attempts. Please try again in 60 seconds."
+    }
+    ```
+  </Tab>
+</Tabs>
+
+## Code Examples
+
+<CodeGroup>
+
+```javascript JavaScript (Fetch)
+// Step 1: Get CSRF cookie
+await fetch('https://your-domain.com/sanctum/csrf-cookie', {
+  credentials: 'include'
+});
+
+// Step 2: Get CSRF token from cookie
+const csrfToken = document.cookie
+  .split('; ')
+  .find(row => row.startsWith('XSRF-TOKEN='))
+  ?.split('=')[1];
+
+// Step 3: Login
+const response = await fetch('https://your-domain.com/login', {
+  method: 'POST',
+  headers: {
+    'Content-Type': 'application/json',
+    'Accept': 'application/json',
+    'X-XSRF-TOKEN': decodeURIComponent(csrfToken)
+  },
+  credentials: 'include',
+  body: JSON.stringify({
+    email: 'user@example.com',
+    password: 'password123',
+    remember: true
+  })
+});
+
+const data = await response.json();
+
+if (data.two_factor) {
+  // Redirect to 2FA challenge page
+  console.log('Two-factor authentication required');
+} else {
+  // User is authenticated
+  console.log('Login successful');
+}
+```
+
+```bash cURL
+# Step 1: Get CSRF cookie
+curl -X GET 'https://your-domain.com/sanctum/csrf-cookie' \
+  -c cookies.txt
+
+# Step 2: Login (CSRF token automatically included from cookies)
+curl -X POST 'https://your-domain.com/login' \
+  -b cookies.txt \
+  -c cookies.txt \
+  -H 'Content-Type: application/json' \
+  -H 'Accept: application/json' \
+  -H "X-XSRF-TOKEN: $(grep XSRF-TOKEN cookies.txt | cut -f7)" \
+  -d '{
+    "email": "user@example.com",
+    "password": "password123",
+    "remember": true
+  }'
+```
+
+```php PHP
+use Illuminate\Support\Facades\Http;
+
+// Get CSRF cookie
+$response = Http::withOptions([
+    'cookies' => $cookieJar = new \GuzzleHttp\Cookie\CookieJar(),
+])->get('https://your-domain.com/sanctum/csrf-cookie');
+
+// Login
+$response = Http::withOptions([
+    'cookies' => $cookieJar,
+])->post('https://your-domain.com/login', [
+    'email' => 'user@example.com',
+    'password' => 'password123',
+    'remember' => true,
+]);
+
+if ($response->json()['two_factor'] ?? false) {
+    // Handle 2FA challenge
+} else {
+    // User authenticated
+}
+```
+
+```python Python
+import requests
+
+session = requests.Session()
+
+# Step 1: Get CSRF cookie
+session.get('https://your-domain.com/sanctum/csrf-cookie')
+
+# Step 2: Get CSRF token
+csrf_token = session.cookies.get('XSRF-TOKEN')
+
+# Step 3: Login
+response = session.post(
+    'https://your-domain.com/login',
+    json={
+        'email': 'user@example.com',
+        'password': 'password123',
+        'remember': True
+    },
+    headers={
+        'Accept': 'application/json',
+        'X-XSRF-TOKEN': csrf_token
+    }
+)
+
+data = response.json()
+
+if data.get('two_factor'):
+    print('Two-factor authentication required')
+else:
+    print('Login successful')
+```
+
+</CodeGroup>
+
+## Rate Limiting
+
+Login attempts are rate-limited to **5 requests per minute** per unique combination of email and IP address.
+
+<Info>
+  The rate limiter uses a sliding window, so the limit resets gradually rather than all at once.
+</Info>
+
+## Logout
+
+To logout an authenticated user:
+
+```http
+POST /logout
+```
+
+This will invalidate the current session.
+
+### Example
+
+```javascript
+await fetch('https://your-domain.com/logout', {
+  method: 'POST',
+  headers: {
+    'Accept': 'application/json',
+    'X-XSRF-TOKEN': csrfToken
+  },
+  credentials: 'include'
+});
+```
+
+## Common Issues
+
+<AccordionGroup>
+  <Accordion title="419 - CSRF token mismatch">
+    The CSRF token is missing or invalid. Make sure to:
+    1. Request `/sanctum/csrf-cookie` before login
+    2. Include the `X-XSRF-TOKEN` header
+    3. Use the same session for both requests
+  </Accordion>
+
+  <Accordion title="Credentials don't match">
+    - Verify the email address is correct (case-insensitive)
+    - Check the password is correct (case-sensitive)
+    - Ensure the user account exists and is active
+  </Accordion>
+
+  <Accordion title="Session not persisting">
+    Make sure your HTTP client:
+    - Supports cookies
+    - Has `credentials: 'include'` (fetch) or equivalent
+    - Uses the same session across requests
+  </Accordion>
+</AccordionGroup>
+
+## Related Endpoints
+
+<CardGroup cols={3}>
+  <Card title="Register" icon="user-plus" href="/api/authentication/register">
+    Create a new account
+  </Card>
+  <Card title="Two-Factor" icon="shield-halved" href="/api/authentication/two-factor">
+    Complete 2FA challenge
+  </Card>
+  <Card title="Password Reset" icon="key">
+    Reset forgotten password
+  </Card>
+</CardGroup>

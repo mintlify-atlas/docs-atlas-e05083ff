@@ -1,0 +1,299 @@
+---
+title: Installation
+description: Step-by-step guide to install MediaStream on your local machine
+---
+
+## System Requirements
+
+Before installing MediaStream, ensure your system meets the following requirements:
+
+- **PHP**: ^8.2 or higher
+- **Node.js**: 18.x or higher
+- **Composer**: 2.x or higher
+- **Database**: SQLite (default) or MySQL/PostgreSQL
+
+## Installation Methods
+
+Choose your preferred installation method:
+
+<Tabs>
+  <Tab title="Quick Setup (Recommended)">
+    <Steps>
+      <Step title="Clone the repository">
+        Clone the MediaStream repository to your local machine:
+
+        ```bash
+        git clone https://github.com/OscarSPR/test-mediastream.git
+        cd test-mediastream
+        ```
+      </Step>
+
+      <Step title="Run the setup script">
+        MediaStream includes a convenient setup script that handles all installation steps:
+
+        ```bash
+        composer run setup
+        ```
+
+        This command will:
+        - Install PHP dependencies via Composer
+        - Copy `.env.example` to `.env` if it doesn't exist
+        - Generate application key
+        - Run database migrations
+        - Install Node.js dependencies
+        - Build frontend assets
+      </Step>
+
+      <Step title="Start the development server">
+        Launch all development services with a single command:
+
+        ```bash
+        composer run dev
+        ```
+
+        This starts:
+        - Laravel development server on `http://localhost:8000`
+        - Queue worker for background jobs
+        - Laravel Pail for real-time logs
+        - Vite dev server with HMR
+      </Step>
+    </Steps>
+
+    <Note>
+      The development server runs all services concurrently. Press `Ctrl+C` to stop all services at once.
+    </Note>
+  </Tab>
+
+  <Tab title="Manual Setup">
+    <Steps>
+      <Step title="Clone the repository">
+        ```bash
+        git clone https://github.com/OscarSPR/test-mediastream.git
+        cd test-mediastream
+        ```
+      </Step>
+
+      <Step title="Install PHP dependencies">
+        Install backend dependencies using Composer:
+
+        ```bash
+        composer install
+        ```
+
+        **Key Dependencies:**
+        - `laravel/framework`: ^12.0
+        - `inertiajs/inertia-laravel`: ^2.0
+        - `laravel/fortify`: ^1.30 (Authentication)
+        - `laravel/tinker`: ^2.10.1 (REPL)
+        - `laravel/wayfinder`: ^0.1.9 (Routing)
+      </Step>
+
+      <Step title="Install Node.js dependencies">
+        Install frontend dependencies:
+
+        <CodeGroup>
+          ```bash npm
+          npm install
+          ```
+
+          ```bash pnpm
+          pnpm install
+          ```
+
+          ```bash yarn
+          yarn install
+          ```
+        </CodeGroup>
+
+        **Key Dependencies:**
+        - `vue`: ^3.5.13
+        - `@inertiajs/vue3`: ^2.1.0
+        - `vite`: ^7.0.4
+        - `tailwindcss`: ^4.1.1
+        - `typescript`: ^5.2.2
+        - `vee-validate`: ^4.15.1
+        - `zod`: ^3.25.76
+      </Step>
+
+      <Step title="Configure environment">
+        Copy the example environment file:
+
+        ```bash
+        cp .env.example .env
+        ```
+
+        Generate application key:
+
+        ```bash
+        php artisan key:generate
+        ```
+      </Step>
+
+      <Step title="Set up database">
+        MediaStream uses SQLite by default. Create the database file:
+
+        ```bash
+        touch database/database.sqlite
+        ```
+
+        Run migrations:
+
+        ```bash
+        php artisan migrate
+        ```
+      </Step>
+
+      <Step title="Build frontend assets">
+        Build the Vue.js frontend:
+
+        <CodeGroup>
+          ```bash Development
+          npm run dev
+          ```
+
+          ```bash Production
+          npm run build
+          ```
+        </CodeGroup>
+      </Step>
+
+      <Step title="Start the server">
+        Start the Laravel development server:
+
+        ```bash
+        php artisan serve
+        ```
+
+        Access the application at `http://localhost:8000`
+      </Step>
+    </Steps>
+  </Tab>
+</Tabs>
+
+## Development Dependencies
+
+The following development tools are included:
+
+### Backend
+
+- `laravel/sail`: ^1.41 - Docker development environment
+- `laravel/pail`: ^1.2.2 - Real-time log viewer
+- `laravel/pint`: ^1.24 - PHP code style fixer
+- `pestphp/pest`: ^3.8 - Testing framework
+- `mockery/mockery`: ^1.6 - Mocking library
+
+### Frontend
+
+- `@vitejs/plugin-vue`: ^6.0.0 - Vue 3 plugin for Vite
+- `typescript`: ^5.2.2 - TypeScript support
+- `eslint`: ^9.17.0 - JavaScript linter
+- `prettier`: ^3.4.2 - Code formatter
+- `tailwindcss`: ^4.1.1 - Utility-first CSS framework
+
+## Optional: Docker Setup
+
+MediaStream includes Laravel Sail for Docker-based development:
+
+<Steps>
+  <Step title="Install Sail">
+    Sail is already included in the dependencies. Initialize it:
+
+    ```bash
+    php artisan sail:install
+    ```
+  </Step>
+
+  <Step title="Start containers">
+    ```bash
+    ./vendor/bin/sail up -d
+    ```
+  </Step>
+
+  <Step title="Run migrations">
+    ```bash
+    ./vendor/bin/sail artisan migrate
+    ```
+  </Step>
+</Steps>
+
+## Server-Side Rendering (Optional)
+
+MediaStream supports SSR with Inertia.js:
+
+<Steps>
+  <Step title="Build SSR bundle">
+    ```bash
+    npm run build:ssr
+    ```
+  </Step>
+
+  <Step title="Start with SSR">
+    ```bash
+    composer run dev:ssr
+    ```
+
+    This starts the SSR server instead of the Vite dev server.
+  </Step>
+</Steps>
+
+## Verification
+
+Verify your installation is successful:
+
+1. Visit `http://localhost:8000` in your browser
+2. You should see the MediaStream welcome page
+3. The registration and login links should be visible
+
+<Check>
+  If you see the welcome page, congratulations! MediaStream is now installed.
+</Check>
+
+## Troubleshooting
+
+<AccordionGroup>
+  <Accordion title="Permission errors">
+    Ensure the storage and cache directories are writable:
+
+    ```bash
+    chmod -R 775 storage bootstrap/cache
+    ```
+  </Accordion>
+
+  <Accordion title="Database connection errors">
+    Verify your database file exists:
+
+    ```bash
+    ls -la database/database.sqlite
+    ```
+
+    If using MySQL/PostgreSQL, check your `.env` database credentials.
+  </Accordion>
+
+  <Accordion title="Node.js build errors">
+    Clear the npm cache and reinstall:
+
+    ```bash
+    rm -rf node_modules package-lock.json
+    npm install
+    ```
+  </Accordion>
+
+  <Accordion title="Port already in use">
+    If port 8000 is taken, specify a different port:
+
+    ```bash
+    php artisan serve --port=8080
+    ```
+  </Accordion>
+</AccordionGroup>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Quick Start" icon="rocket" href="/getting-started/quickstart">
+    Learn how to create your first series and upload media
+  </Card>
+  <Card title="Configuration" icon="gear" href="/getting-started/configuration">
+    Configure environment variables and application settings
+  </Card>
+</CardGroup>

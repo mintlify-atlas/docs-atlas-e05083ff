@@ -1,0 +1,675 @@
+---
+title: Configuration
+description: Configure MediaStream environment variables and application settings
+---
+
+## Environment Configuration
+
+MediaStream uses a `.env` file for environment-specific configuration. This file is created from `.env.example` during installation.
+
+<Steps>
+  <Step title="Create environment file">
+    If you haven't already, copy the example file:
+
+    ```bash
+    cp .env.example .env
+    ```
+  </Step>
+
+  <Step title="Generate application key">
+    Generate a unique application key:
+
+    ```bash
+    php artisan key:generate
+    ```
+
+    This sets the `APP_KEY` value in your `.env` file.
+  </Step>
+</Steps>
+
+## Core Application Settings
+
+### Application Identity
+
+```bash .env
+APP_NAME=Laravel
+APP_ENV=local
+APP_KEY=
+APP_DEBUG=true
+APP_URL=http://localhost
+```
+
+<ParamField path="APP_NAME" type="string" default="Laravel">
+  Your application name. This appears in:
+  - Page titles
+  - Email notifications
+  - Default branding
+
+  ```bash
+  APP_NAME="MediaStream"
+  ```
+</ParamField>
+
+<ParamField path="APP_ENV" type="string" default="local">
+  Application environment. Common values:
+  - `local` - Development
+  - `staging` - Pre-production
+  - `production` - Live environment
+
+  <Warning>
+    Never use `local` or `staging` in production!
+  </Warning>
+</ParamField>
+
+<ParamField path="APP_KEY" type="string" required>
+  Encryption key for securing session data and encrypted values.
+
+  Generated automatically with `php artisan key:generate`.
+</ParamField>
+
+<ParamField path="APP_DEBUG" type="boolean" default="true">
+  Enable detailed error messages and debugging tools.
+
+  <Warning>
+    **ALWAYS** set to `false` in production to prevent information disclosure.
+  </Warning>
+
+  ```bash
+  # Development
+  APP_DEBUG=true
+
+  # Production
+  APP_DEBUG=false
+  ```
+</ParamField>
+
+<ParamField path="APP_URL" type="string" default="http://localhost">
+  The base URL of your application. Used for:
+  - Generating links in emails
+  - Asset URL generation
+  - API responses
+
+  ```bash
+  # Local development
+  APP_URL=http://localhost:8000
+
+  # Production
+  APP_URL=https://mediastream.example.com
+  ```
+</ParamField>
+
+### Localization
+
+```bash .env
+APP_LOCALE=en
+APP_FALLBACK_LOCALE=en
+APP_FAKER_LOCALE=en_US
+```
+
+<ParamField path="APP_LOCALE" type="string" default="en">
+  Default application language.
+</ParamField>
+
+<ParamField path="APP_FALLBACK_LOCALE" type="string" default="en">
+  Language to use when the requested locale is unavailable.
+</ParamField>
+
+<ParamField path="APP_FAKER_LOCALE" type="string" default="en_US">
+  Locale for generating fake data in tests and seeders.
+</ParamField>
+
+### Maintenance Mode
+
+```bash .env
+APP_MAINTENANCE_DRIVER=file
+# APP_MAINTENANCE_STORE=database
+```
+
+<ParamField path="APP_MAINTENANCE_DRIVER" type="string" default="file">
+  Storage driver for maintenance mode state:
+  - `file` - Store in filesystem
+  - `database` - Store in database
+  - `cache` - Store in cache
+</ParamField>
+
+## Security Settings
+
+### Encryption
+
+```bash .env
+BCRYPT_ROUNDS=12
+```
+
+<ParamField path="BCRYPT_ROUNDS" type="integer" default="12">
+  Number of rounds for bcrypt password hashing.
+
+  Higher values = more secure but slower:
+  - `10` - Fast, less secure
+  - `12` - Balanced (recommended)
+  - `14+` - Slower, more secure
+</ParamField>
+
+## Database Configuration
+
+MediaStream supports multiple database systems:
+
+<Tabs>
+  <Tab title="SQLite (Default)">
+    ```bash .env
+    DB_CONNECTION=sqlite
+    # DB_HOST=127.0.0.1
+    # DB_PORT=3306
+    # DB_DATABASE=laravel
+    # DB_USERNAME=root
+    # DB_PASSWORD=
+    ```
+
+    SQLite requires no additional configuration. Just ensure the database file exists:
+
+    ```bash
+    touch database/database.sqlite
+    php artisan migrate
+    ```
+
+    <Info>
+      SQLite is perfect for development but consider MySQL/PostgreSQL for production.
+    </Info>
+  </Tab>
+
+  <Tab title="MySQL">
+    ```bash .env
+    DB_CONNECTION=mysql
+    DB_HOST=127.0.0.1
+    DB_PORT=3306
+    DB_DATABASE=mediastream
+    DB_USERNAME=root
+    DB_PASSWORD=secret
+    ```
+
+    <Steps>
+      <Step title="Create database">
+        ```sql
+        CREATE DATABASE mediastream CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+        ```
+      </Step>
+
+      <Step title="Configure credentials">
+        Update the `.env` file with your MySQL credentials.
+      </Step>
+
+      <Step title="Run migrations">
+        ```bash
+        php artisan migrate
+        ```
+      </Step>
+    </Steps>
+  </Tab>
+
+  <Tab title="PostgreSQL">
+    ```bash .env
+    DB_CONNECTION=pgsql
+    DB_HOST=127.0.0.1
+    DB_PORT=5432
+    DB_DATABASE=mediastream
+    DB_USERNAME=postgres
+    DB_PASSWORD=secret
+    ```
+
+    <Steps>
+      <Step title="Create database">
+        ```sql
+        CREATE DATABASE mediastream WITH ENCODING 'UTF8';
+        ```
+      </Step>
+
+      <Step title="Configure credentials">
+        Update the `.env` file with your PostgreSQL credentials.
+      </Step>
+
+      <Step title="Run migrations">
+        ```bash
+        php artisan migrate
+        ```
+      </Step>
+    </Steps>
+  </Tab>
+</Tabs>
+
+## Session Configuration
+
+```bash .env
+SESSION_DRIVER=database
+SESSION_LIFETIME=120
+SESSION_ENCRYPT=false
+SESSION_PATH=/
+SESSION_DOMAIN=null
+```
+
+<ParamField path="SESSION_DRIVER" type="string" default="database">
+  Where to store session data:
+  - `file` - Filesystem storage
+  - `cookie` - Browser cookies
+  - `database` - Database storage (recommended)
+  - `redis` - Redis cache
+  - `memcached` - Memcached cache
+
+  <Note>
+    Database sessions require the sessions table. Run migrations if switching drivers:
+    ```bash
+    php artisan migrate
+    ```
+  </Note>
+</ParamField>
+
+<ParamField path="SESSION_LIFETIME" type="integer" default="120">
+  Session lifetime in minutes (2 hours by default).
+
+  ```bash
+  # 2 hours
+  SESSION_LIFETIME=120
+
+  # 24 hours
+  SESSION_LIFETIME=1440
+  ```
+</ParamField>
+
+<ParamField path="SESSION_ENCRYPT" type="boolean" default="false">
+  Whether to encrypt session data.
+
+  <Info>
+    Enable for sensitive applications, but increases overhead.
+  </Info>
+</ParamField>
+
+## Queue Configuration
+
+```bash .env
+QUEUE_CONNECTION=database
+```
+
+<ParamField path="QUEUE_CONNECTION" type="string" default="database">
+  Queue driver for background jobs:
+  - `sync` - Process immediately (no queue)
+  - `database` - Database-backed queue
+  - `redis` - Redis queue (recommended for production)
+  - `sqs` - Amazon SQS
+
+  ```bash
+  # Development
+  QUEUE_CONNECTION=database
+
+  # Production
+  QUEUE_CONNECTION=redis
+  ```
+</ParamField>
+
+<Note>
+  Queue workers must be running to process jobs:
+  ```bash
+  php artisan queue:work
+  ```
+</Note>
+
+## Cache Configuration
+
+```bash .env
+CACHE_STORE=database
+# CACHE_PREFIX=
+```
+
+<ParamField path="CACHE_STORE" type="string" default="database">
+  Cache driver for application caching:
+  - `file` - File-based cache
+  - `database` - Database cache
+  - `redis` - Redis cache (recommended)
+  - `memcached` - Memcached cache
+  - `array` - Array cache (testing only)
+
+  ```bash
+  # Development
+  CACHE_STORE=database
+
+  # Production with Redis
+  CACHE_STORE=redis
+  ```
+</ParamField>
+
+<ParamField path="CACHE_PREFIX" type="string" optional>
+  Prefix for cache keys to avoid collisions when sharing cache storage.
+
+  ```bash
+  CACHE_PREFIX=mediastream_
+  ```
+</ParamField>
+
+## File Storage
+
+```bash .env
+FILESYSTEM_DISK=local
+BROADCAST_CONNECTION=log
+```
+
+<ParamField path="FILESYSTEM_DISK" type="string" default="local">
+  Default filesystem disk:
+  - `local` - Local storage in `storage/app`
+  - `public` - Public storage in `storage/app/public`
+  - `s3` - Amazon S3
+
+  ```bash
+  # Local development
+  FILESYSTEM_DISK=local
+
+  # Production with S3
+  FILESYSTEM_DISK=s3
+  ```
+</ParamField>
+
+### Amazon S3 Configuration
+
+For cloud storage, configure AWS S3:
+
+```bash .env
+AWS_ACCESS_KEY_ID=
+AWS_SECRET_ACCESS_KEY=
+AWS_DEFAULT_REGION=us-east-1
+AWS_BUCKET=
+AWS_USE_PATH_STYLE_ENDPOINT=false
+```
+
+<Steps>
+  <Step title="Create S3 bucket">
+    Create a bucket in AWS S3 console.
+  </Step>
+
+  <Step title="Generate access keys">
+    Create IAM credentials with S3 access.
+  </Step>
+
+  <Step title="Configure environment">
+    ```bash .env
+    FILESYSTEM_DISK=s3
+    AWS_ACCESS_KEY_ID=your-access-key
+    AWS_SECRET_ACCESS_KEY=your-secret-key
+    AWS_DEFAULT_REGION=us-east-1
+    AWS_BUCKET=your-bucket-name
+    ```
+  </Step>
+</Steps>
+
+## Logging Configuration
+
+```bash .env
+LOG_CHANNEL=stack
+LOG_STACK=single
+LOG_DEPRECATIONS_CHANNEL=null
+LOG_LEVEL=debug
+```
+
+<ParamField path="LOG_CHANNEL" type="string" default="stack">
+  Logging channel:
+  - `stack` - Multiple channels
+  - `single` - Single log file
+  - `daily` - Daily rotated logs
+  - `stderr` - Standard error output
+  - `syslog` - System log
+</ParamField>
+
+<ParamField path="LOG_LEVEL" type="string" default="debug">
+  Minimum log level to record:
+  - `debug` - All messages
+  - `info` - Informational and above
+  - `warning` - Warnings and errors
+  - `error` - Errors only
+  - `critical` - Critical errors only
+
+  ```bash
+  # Development
+  LOG_LEVEL=debug
+
+  # Production
+  LOG_LEVEL=warning
+  ```
+</ParamField>
+
+## Mail Configuration
+
+```bash .env
+MAIL_MAILER=log
+MAIL_SCHEME=null
+MAIL_HOST=127.0.0.1
+MAIL_PORT=2525
+MAIL_USERNAME=null
+MAIL_PASSWORD=null
+MAIL_FROM_ADDRESS="hello@example.com"
+MAIL_FROM_NAME="${APP_NAME}"
+```
+
+<Tabs>
+  <Tab title="Log (Development)">
+    In development, emails are logged instead of sent:
+
+    ```bash .env
+    MAIL_MAILER=log
+    ```
+
+    View emails in:
+    ```bash
+    tail -f storage/logs/laravel.log
+    ```
+  </Tab>
+
+  <Tab title="SMTP">
+    For production, configure SMTP:
+
+    ```bash .env
+    MAIL_MAILER=smtp
+    MAIL_HOST=smtp.gmail.com
+    MAIL_PORT=587
+    MAIL_USERNAME=your-email@gmail.com
+    MAIL_PASSWORD=your-app-password
+    MAIL_ENCRYPTION=tls
+    MAIL_FROM_ADDRESS="noreply@mediastream.com"
+    MAIL_FROM_NAME="MediaStream"
+    ```
+  </Tab>
+
+  <Tab title="Mailgun">
+    ```bash .env
+    MAIL_MAILER=mailgun
+    MAILGUN_DOMAIN=your-domain.com
+    MAILGUN_SECRET=your-api-key
+    MAIL_FROM_ADDRESS="noreply@mediastream.com"
+    MAIL_FROM_NAME="MediaStream"
+    ```
+  </Tab>
+
+  <Tab title="Postmark">
+    ```bash .env
+    MAIL_MAILER=postmark
+    POSTMARK_TOKEN=your-token
+    MAIL_FROM_ADDRESS="noreply@mediastream.com"
+    MAIL_FROM_NAME="MediaStream"
+    ```
+  </Tab>
+</Tabs>
+
+## Redis Configuration
+
+```bash .env
+REDIS_CLIENT=phpredis
+REDIS_HOST=127.0.0.1
+REDIS_PASSWORD=null
+REDIS_PORT=6379
+```
+
+<ParamField path="REDIS_CLIENT" type="string" default="phpredis">
+  Redis client library:
+  - `phpredis` - PHP extension (faster)
+  - `predis` - Pure PHP client
+</ParamField>
+
+<Note>
+  Redis is optional but recommended for:
+  - Caching
+  - Queue management
+  - Session storage
+  - Real-time features
+</Note>
+
+## Memcached Configuration
+
+```bash .env
+MEMCACHED_HOST=127.0.0.1
+```
+
+<ParamField path="MEMCACHED_HOST" type="string" default="127.0.0.1">
+  Memcached server hostname.
+</ParamField>
+
+## Frontend Configuration
+
+### Vite Environment Variables
+
+```bash .env
+VITE_APP_NAME="${APP_NAME}"
+```
+
+All `VITE_*` variables are accessible in frontend code:
+
+```typescript
+// resources/js/app.ts
+const appName = import.meta.env.VITE_APP_NAME || 'Laravel';
+```
+
+<Info>
+  Changes to `.env` variables require restarting the Vite dev server:
+  ```bash
+  npm run dev
+  ```
+</Info>
+
+### Additional Frontend Variables
+
+Add custom variables for frontend use:
+
+```bash .env
+VITE_API_URL="${APP_URL}/api"
+VITE_PUSHER_KEY=your-pusher-key
+VITE_GOOGLE_ANALYTICS_ID=G-XXXXXXXXXX
+```
+
+## Performance Tuning
+
+### PHP Server Workers
+
+```bash .env
+PHP_CLI_SERVER_WORKERS=4
+```
+
+<ParamField path="PHP_CLI_SERVER_WORKERS" type="integer" default="4">
+  Number of PHP workers for the built-in server.
+
+  ```bash
+  # Development (low traffic)
+  PHP_CLI_SERVER_WORKERS=4
+
+  # Heavy development
+  PHP_CLI_SERVER_WORKERS=8
+  ```
+
+  <Warning>
+    Only applies to `php artisan serve`. Production should use PHP-FPM or similar.
+  </Warning>
+</ParamField>
+
+## Production Checklist
+
+Before deploying to production:
+
+<Steps>
+  <Step title="Environment">
+    ```bash .env
+    APP_ENV=production
+    APP_DEBUG=false
+    ```
+  </Step>
+
+  <Step title="Security">
+    - Use HTTPS (`APP_URL=https://...`)
+    - Set strong `APP_KEY`
+    - Secure database credentials
+    - Enable session encryption if needed
+  </Step>
+
+  <Step title="Performance">
+    ```bash
+    # Use Redis for cache and queue
+    CACHE_STORE=redis
+    QUEUE_CONNECTION=redis
+    SESSION_DRIVER=redis
+    ```
+  </Step>
+
+  <Step title="Mail">
+    Configure a production mail service (SMTP, Mailgun, etc.)
+  </Step>
+
+  <Step title="Storage">
+    Consider using S3 or similar for media files:
+    ```bash
+    FILESYSTEM_DISK=s3
+    ```
+  </Step>
+
+  <Step title="Optimize">
+    ```bash
+    # Cache configuration
+    php artisan config:cache
+
+    # Cache routes
+    php artisan route:cache
+
+    # Cache views
+    php artisan view:cache
+
+    # Build assets
+    npm run build
+    ```
+  </Step>
+</Steps>
+
+## Configuration Caching
+
+For better performance, cache configuration:
+
+```bash
+# Cache all config files
+php artisan config:cache
+
+# Clear cached config
+php artisan config:clear
+```
+
+<Warning>
+  When configuration is cached, the `.env` file is no longer read. You must clear cache after environment changes:
+  ```bash
+  php artisan config:clear
+  ```
+</Warning>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Series Management" icon="tv" href="/features/series-management">
+    Learn how to manage series, seasons, and episodes
+  </Card>
+  <Card title="User Authentication" icon="lock" href="/features/user-authentication">
+    Configure authentication and security features
+  </Card>
+  <Card title="Architecture" icon="diagram-project" href="/development/architecture">
+    Understand the technical architecture
+  </Card>
+  <Card title="API Reference" icon="code" href="/api-reference">
+    Explore the REST API documentation
+  </Card>
+</CardGroup>

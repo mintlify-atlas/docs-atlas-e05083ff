@@ -1,0 +1,224 @@
+---
+title: 'Get Episode'
+api: 'GET /api/series/{showId}/seasons/{seasonId}/chapters/{chapterId}'
+description: 'Retrieve details of a specific episode'
+---
+
+## Overview
+
+This endpoint retrieves detailed information about a specific episode, including its video content, metadata, and thumbnail images.
+
+## Path Parameters
+
+<ParamField path="showId" type="string" required>
+  The unique identifier of the series
+</ParamField>
+
+<ParamField path="seasonId" type="string" required>
+  The unique identifier of the season
+</ParamField>
+
+<ParamField path="chapterId" type="string" required>
+  The unique identifier of the episode
+</ParamField>
+
+## Request Example
+
+<CodeGroup>
+```bash cURL
+curl -X GET "https://your-domain.com/api/series/abc123/seasons/def456/chapters/ghi789" \
+  -H "Accept: application/json"
+```
+
+```javascript JavaScript
+const response = await fetch(
+  'https://your-domain.com/api/series/abc123/seasons/def456/chapters/ghi789',
+  {
+    method: 'GET',
+    headers: {
+      'Accept': 'application/json'
+    }
+  }
+);
+const data = await response.json();
+```
+
+```php PHP
+$response = MediastreamService::request(
+    '/show/' . $showId . '/season/' . $seasonId . '/episode/' . $chapterId,
+    'get'
+);
+
+return $response->json();
+```
+</CodeGroup>
+
+## Response
+
+<ResponseField name="_id" type="string">
+  Unique episode identifier
+</ResponseField>
+
+<ResponseField name="title" type="string">
+  Episode title
+</ResponseField>
+
+<ResponseField name="description" type="string">
+  Episode description
+</ResponseField>
+
+<ResponseField name="content" type="array">
+  Video content array
+  
+  <Expandable title="Content Object">
+    <ResponseField name="value" type="object">
+      <ResponseField name="_id" type="string">
+        Video ID from Mediastream. Use this ID to construct streaming URLs:
+        `https://mdstrm.com/video/{_id}.m3u8`
+      </ResponseField>
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<ResponseField name="images" type="array">
+  Episode thumbnail images
+  
+  <Expandable title="Image Object">
+    <ResponseField name="_id" type="string">
+      Image identifier
+    </ResponseField>
+
+    <ResponseField name="path" type="string">
+      Image path
+    </ResponseField>
+
+    <ResponseField name="basePath" type="string">
+      Base CDN path. Construct full URL as:
+      `https://platform-static.cdn.mdstrm.com{basePath}`
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<ResponseField name="createdAt" type="string">
+  ISO 8601 timestamp when the episode was created
+</ResponseField>
+
+<ResponseField name="updatedAt" type="string">
+  ISO 8601 timestamp when the episode was last updated
+</ResponseField>
+
+### Response Example
+
+```json
+{
+  "_id": "64a7f2b1c8d4e12345abcdef",
+  "title": "Episode 1: Pilot",
+  "description": "The beginning of an epic journey. In this episode, we meet our main characters and learn about the world they inhabit.",
+  "content": [
+    {
+      "value": {
+        "_id": "5f8a3d2b1c9d440000123456"
+      }
+    }
+  ],
+  "images": [
+    {
+      "_id": "img123",
+      "path": "/images/episode1.jpg",
+      "basePath": "/images/episodes/pilot"
+    }
+  ],
+  "createdAt": "2024-03-01T10:30:00Z",
+  "updatedAt": "2024-03-05T14:20:00Z"
+}
+```
+
+## Video Playback
+
+Use the video ID from the `content` array to stream the episode:
+
+### HLS Streaming URL
+
+```javascript
+const videoId = episode.content[0].value._id;
+const streamUrl = `https://mdstrm.com/video/${videoId}.m3u8`;
+```
+
+### HTML5 Video Player
+
+```html
+<video
+  controls
+  autoplay
+  src="https://mdstrm.com/video/5f8a3d2b1c9d440000123456.m3u8"
+  class="w-full aspect-video"
+></video>
+```
+
+### MediaStream Player Integration
+
+```javascript
+const playerOptions = {
+  width: 640,
+  height: 360,
+  type: 'media',
+  id: videoId,
+  autoplay: false,
+  events: {
+    onPlayerReady: () => console.log('Player ready'),
+    onPlay: () => console.log('Playing'),
+    onVideoEnd: () => console.log('Video ended'),
+    onVideoError: () => console.log('Error')
+  }
+};
+
+new MediastreamPlayer('player-container', playerOptions);
+```
+
+## Error Responses
+
+<AccordionGroup>
+  <Accordion title="404 Not Found">
+    The specified episode, season, or series does not exist.
+    
+    ```json
+    {
+      "error": "Episode not found"
+    }
+    ```
+  </Accordion>
+
+  <Accordion title="401 Unauthorized">
+    Invalid or missing API authentication.
+    
+    ```json
+    {
+      "error": "Unauthorized access"
+    }
+    ```
+  </Accordion>
+
+  <Accordion title="500 Internal Server Error">
+    Server error while fetching the episode.
+    
+    ```json
+    {
+      "error": "Failed to retrieve episode details"
+    }
+    ```
+  </Accordion>
+</AccordionGroup>
+
+## Notes
+
+<Note>
+  This endpoint is used by the episode player view to load video content and metadata for playback.
+</Note>
+
+<Tip>
+  The episode data includes both native HTML5 video playback URLs and MediaStream player integration options. Choose the player that best fits your use case.
+</Tip>
+
+<Info>
+  HLS (HTTP Live Streaming) automatically adapts video quality based on the viewer's internet connection speed, providing the best possible viewing experience.
+</Info>

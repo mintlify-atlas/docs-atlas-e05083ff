@@ -1,0 +1,198 @@
+---
+title: 'Create Series'
+api: 'POST /api/series'
+description: 'Create a new series in the MediaStream platform'
+---
+
+## Overview
+
+This endpoint creates a new series (TV show) in the MediaStream platform. The series must have at minimum a title and type specified.
+
+## Authentication
+
+This endpoint requires MediaStream API authentication using the `X-API-Token` header.
+
+<ParamField header="X-API-Token" type="string" required>
+  Your MediaStream API authentication token
+</ParamField>
+
+<ParamField header="Accept" type="string" default="application/json">
+  Content type for the response
+</ParamField>
+
+<ParamField header="Content-Type" type="string" default="application/json">
+  Content type of the request body
+</ParamField>
+
+## Request Body
+
+<ParamField body="title" type="string" required>
+  The title of the series. This is the primary name that will be displayed.
+</ParamField>
+
+<ParamField body="type" type="string" required>
+  The type of content. Must be `"tvshow"` for series.
+</ParamField>
+
+<ParamField body="description" type="string">
+  A detailed description of the series content
+</ParamField>
+
+<ParamField body="images" type="array">
+  Array of image objects to associate with the series
+</ParamField>
+
+<ParamField body="metadata" type="object">
+  Additional metadata for the series (structure depends on MediaStream platform)
+</ParamField>
+
+## Response
+
+The response structure depends on the MediaStream platform API. Typically returns the created series object.
+
+<ResponseField name="_id" type="string">
+  Unique identifier for the newly created series
+</ResponseField>
+
+<ResponseField name="title" type="string">
+  The title of the series
+</ResponseField>
+
+<ResponseField name="type" type="string">
+  Type of content ("tvshow")
+</ResponseField>
+
+<ResponseField name="description" type="string">
+  Description of the series
+</ResponseField>
+
+<ResponseField name="created_at" type="string">
+  Timestamp when the series was created
+</ResponseField>
+
+## Example Request
+
+<CodeGroup>
+
+```bash cURL
+curl -X POST "https://your-domain.com/api/series" \
+  -H "X-API-Token: your_api_token" \
+  -H "Content-Type: application/json" \
+  -H "Accept: application/json" \
+  -d '{
+    "title": "Breaking Bad",
+    "type": "tvshow",
+    "description": "A high school chemistry teacher turned methamphetamine producer"
+  }'
+```
+
+```javascript JavaScript
+const response = await fetch('https://your-domain.com/api/series', {
+  method: 'POST',
+  headers: {
+    'X-API-Token': 'your_api_token',
+    'Content-Type': 'application/json',
+    'Accept': 'application/json'
+  },
+  body: JSON.stringify({
+    title: 'Breaking Bad',
+    type: 'tvshow',
+    description: 'A high school chemistry teacher turned methamphetamine producer'
+  })
+});
+
+const data = await response.json();
+console.log(data);
+```
+
+```php PHP
+$response = Http::withHeaders([
+    'X-API-Token' => env('MEDIASTREAM_API_KEY'),
+    'Accept' => 'application/json',
+])->post('https://your-domain.com/api/series', [
+    'title' => 'Breaking Bad',
+    'type' => 'tvshow',
+    'description' => 'A high school chemistry teacher turned methamphetamine producer'
+]);
+
+$series = $response->json();
+```
+
+```python Python
+import requests
+import json
+
+headers = {
+    'X-API-Token': 'your_api_token',
+    'Content-Type': 'application/json',
+    'Accept': 'application/json'
+}
+
+data = {
+    'title': 'Breaking Bad',
+    'type': 'tvshow',
+    'description': 'A high school chemistry teacher turned methamphetamine producer'
+}
+
+response = requests.post(
+    'https://your-domain.com/api/series',
+    headers=headers,
+    data=json.dumps(data)
+)
+
+series = response.json()
+print(series)
+```
+
+</CodeGroup>
+
+## Example Response
+
+```json
+{
+  "_id": "507f1f77bcf86cd799439011",
+  "title": "Breaking Bad",
+  "type": "tvshow",
+  "description": "A high school chemistry teacher turned methamphetamine producer",
+  "images": [],
+  "seasons": [],
+  "created_at": "2024-03-05T10:30:00Z",
+  "updated_at": "2024-03-05T10:30:00Z"
+}
+```
+
+## Response Status Codes
+
+<ResponseField name="200" type="Success">
+  Series successfully created
+</ResponseField>
+
+<ResponseField name="400" type="Bad Request">
+  Invalid request data or missing required fields
+</ResponseField>
+
+<ResponseField name="401" type="Unauthorized">
+  Invalid or missing API token
+</ResponseField>
+
+<ResponseField name="422" type="Unprocessable Entity">
+  Validation error - the request data doesn't meet requirements
+</ResponseField>
+
+<ResponseField name="500" type="Internal Server Error">
+  An error occurred while creating the series in MediaStream
+</ResponseField>
+
+## Validation Rules
+
+Based on the web controller implementation:
+
+- **title**: Required, must be a string, maximum 255 characters
+- **type**: Required, must be "tvshow"
+
+## Notes
+
+- The endpoint proxies requests to the MediaStream platform API at `/show`
+- All request data is forwarded to the MediaStream platform
+- The series type is currently limited to "tvshow" in the application
+- After creating a series, you can add seasons and episodes using their respective endpoints

@@ -1,0 +1,681 @@
+---
+title: "MediaStream Features"
+description: "Comprehensive overview of all features available in MediaStream for managing video content, users, and media delivery"
+---
+
+## Content Management
+
+MediaStream provides a complete content management system for hierarchical video content.
+
+### Series Management
+
+Organize your video content into series (TV shows) with full CRUD operations.
+
+<CardGroup cols={2}>
+  <Card title="Create Series" icon="plus">
+    Add new series with title, description, and metadata
+  </Card>
+  <Card title="Browse Series" icon="grid">
+    Grid view with thumbnail images and search capabilities
+  </Card>
+  <Card title="Edit Series" icon="pen">
+    Update series information and manage associated content
+  </Card>
+  <Card title="Delete Series" icon="trash">
+    Remove series and optionally cascade delete related content
+  </Card>
+</CardGroup>
+
+**API Endpoints:**
+
+```typescript
+// Series Controller endpoints
+GET    /api/series              // List all series
+POST   /api/series              // Create new series
+GET    /api/series/{showId}     // Get single series
+POST   /api/series/{showId}     // Update series
+DELETE /api/series/{showId}     // Delete series
+```
+
+**Example: Creating a Series**
+
+```vue
+<Form v-bind="series.store.form()" 
+      :reset-on-success="['series_name', 'series_type']"
+      v-slot="{ errors, processing }">
+  <Input 
+    id="series_name" 
+    name="series_name" 
+    type="text" 
+    placeholder="Nombre de la serie" 
+    :disabled="processing" 
+    required 
+  />
+  <Select name="series_type" :disabled="processing">
+    <SelectItem value="tvshow">Serie</SelectItem>
+  </Select>
+  <Button type="submit" :disabled="processing">
+    <Spinner v-if="processing" />
+    Añadir serie
+  </Button>
+</Form>
+```
+
+<Info>
+  Series are stored in the Mediastream API and proxied through your Laravel backend for authentication and authorization.
+</Info>
+
+### Season Management
+
+Organize episodes into seasons within each series.
+
+**Features:**
+- Create multiple seasons per series
+- Order seasons sequentially
+- Associate metadata and images
+- Manage episode collections
+
+**API Endpoints:**
+
+```typescript
+GET    /api/series/{showId}/seasons                    // List seasons
+POST   /api/series/{showId}/seasons                    // Create season
+GET    /api/series/{showId}/seasons/{seasonId}         // Get season
+POST   /api/series/{showId}/seasons/{seasonId}         // Update season
+DELETE /api/series/{showId}/seasons/{seasonId}         // Delete season
+```
+
+**Backend Implementation:**
+
+```php
+// app/Http/Controllers/Api/SeasonController.php
+public function store(Request $request)
+{
+    $showId = $request->route('showId');
+    
+    $response = MediastreamService::request(
+        '/show/' . $showId . '/season/',
+        'post',
+        $request->all()
+    );
+    
+    return $response->json();
+}
+```
+
+### Episode Management (Chapters)
+
+Manage individual episodes within seasons with full metadata support.
+
+<Note>
+  Episodes are referred to as "chapters" in the codebase, following the Mediastream API terminology.
+</Note>
+
+**Capabilities:**
+- Episode numbering and ordering
+- Video file association
+- Metadata and descriptions
+- Thumbnail management
+
+**API Endpoints:**
+
+```typescript
+GET    /api/series/{showId}/seasons/{seasonId}/chapters                  // List episodes
+POST   /api/series/{showId}/seasons/{seasonId}/chapters                  // Create episode
+GET    /api/series/{showId}/seasons/{seasonId}/chapters/{chapterId}      // Get episode
+POST   /api/series/{showId}/seasons/{seasonId}/chapters/{chapterId}      // Update episode
+DELETE /api/series/{showId}/seasons/{seasonId}/chapters/{chapterId}     // Delete episode
+```
+
+**Episode Viewer:**
+
+The platform includes a dedicated episode viewer component:
+
+```vue
+// ChapterView.vue - Episode detail and playback page
+<template>
+  <AppLayout :breadcrumbs="breadcrumbs">
+    <!-- Episode player and metadata -->
+  </AppLayout>
+</template>
+```
+
+## Video Upload & Management
+
+### Chunked Video Upload
+
+Upload large video files with automatic chunking and progress tracking.
+
+<CardGroup cols={2}>
+  <Card title="10MB Chunks" icon="puzzle-piece">
+    Automatic file splitting for reliable large file uploads
+  </Card>
+  <Card title="Progress Tracking" icon="chart-line">
+    Real-time upload progress with visual feedback
+  </Card>
+  <Card title="Resume Support" icon="play">
+    Token-based upload resumption on connection failures
+  </Card>
+  <Card title="Direct Upload" icon="arrow-up">
+    Files upload directly to Mediastream servers
+  </Card>
+</CardGroup>
+
+**Upload Implementation:**
+
+```vue
+// upload-video.vue component
+const handleFile = async (e: Event) => {
+  const file = target.files?.[0]
+  const chunkSize = 10 * 1024 * 1024 // 10MB
+  const totalChunks = Math.ceil(file.size / chunkSize)
+  
+  // 1. Register upload with backend
+  const response = await axios.get('/api/media/upload', {
+    params: {
+      size: file.size,
+      file_name: file.name,
+      type: 'remote',
+    },
+  })
+  
+  const { server, token } = response.data.data
+  
+  // 2. Upload chunks with progress tracking
+  for (let i = 1; i <= totalChunks; i++) {
+    const chunk = file.slice(start, end)
+    const formData = new FormData()
+    formData.append('file', chunk)
+    formData.append('name', file.name)
+    if (token) formData.append('token', token)
+    
+    await axios.post(`${server}/${i}`, formData, {
+      onUploadProgress: (event) => {
+        // Update progress bar
+        progress.value = (uploaded / totalChunks) * 100
+      }
+    })
+  }
+}
+```
+
+<Tip>
+  The chunked upload approach ensures reliable uploads even with poor network conditions, as each chunk can be retried independently.
+</Tip>
+
+### VOD (Video on Demand)
+
+Manage standalone video content outside of series structure.
+
+- Upload individual videos
+- Manage video metadata
+- Browse and search VOD library
+- Direct video management
+
+**Routes:**
+- `/medias` - VOD library listing
+- `/medias/upload` - Upload interface
+
+## Authentication & Security
+
+### User Authentication
+
+Robust authentication powered by Laravel Fortify.
+
+<CardGroup cols={3}>
+  <Card title="Registration" icon="user-plus">
+    User registration with email verification
+  </Card>
+  <Card title="Login" icon="right-to-bracket">
+    Secure login with rate limiting
+  </Card>
+  <Card title="Password Reset" icon="key">
+    Email-based password recovery flow
+  </Card>
+</CardGroup>
+
+**Authentication Features:**
+
+```php
+// config/fortify.php
+'features' => [
+    Features::registration(),
+    Features::resetPasswords(),
+    Features::emailVerification(),
+    Features::twoFactorAuthentication([
+        'confirm' => true,
+        'confirmPassword' => true,
+    ]),
+],
+```
+
+**Available Auth Pages:**
+- `/login` - User login
+- `/register` - New user registration
+- `/forgot-password` - Password reset request
+- `/reset-password` - Password reset form
+- `/verify-email` - Email verification
+- `/two-factor-challenge` - 2FA verification
+
+### Two-Factor Authentication (2FA)
+
+Enhance security with TOTP-based two-factor authentication.
+
+<Info>
+  2FA uses time-based one-time passwords (TOTP) compatible with apps like Google Authenticator, Authy, or 1Password.
+</Info>
+
+**2FA Features:**
+
+- **QR Code Setup**: Scan QR code with authenticator app
+- **Recovery Codes**: Backup codes for account recovery
+- **PIN Verification**: 6-digit code verification on login
+- **Easy Enable/Disable**: Toggle 2FA from settings
+
+**User Interface:**
+
+```vue
+// TwoFactor.vue settings page
+<Form v-bind="enable.form()" @success="showSetupModal = true">
+  <Button type="submit" :disabled="processing">
+    <ShieldCheck />Enable 2FA
+  </Button>
+</Form>
+
+<TwoFactorSetupModal 
+  v-model:isOpen="showSetupModal"
+  :requiresConfirmation="requiresConfirmation"
+/>
+```
+
+**Backend Support:**
+
+```php
+// User model includes TwoFactorAuthenticatable trait
+use Laravel\Fortify\TwoFactorAuthenticatable;
+
+class User extends Authenticatable
+{
+    use TwoFactorAuthenticatable;
+    
+    protected $hidden = [
+        'two_factor_secret',
+        'two_factor_recovery_codes',
+    ];
+}
+```
+
+### Email Verification
+
+Optional email verification for new user accounts.
+
+- Automatic verification emails
+- Resend verification option
+- Protected routes requiring verification
+- Verification status tracking
+
+## User Settings & Profile
+
+### Profile Management
+
+Users can manage their account information.
+
+<CardGroup cols={2}>
+  <Card title="Update Name" icon="id-card">
+    Change display name
+  </Card>
+  <Card title="Update Email" icon="envelope">
+    Change email with re-verification
+  </Card>
+  <Card title="Change Password" icon="lock">
+    Update account password securely
+  </Card>
+  <Card title="Delete Account" icon="user-xmark">
+    Permanently delete account and data
+  </Card>
+</CardGroup>
+
+**Profile Update:**
+
+```vue
+// Profile.vue
+<Form v-bind="ProfileController.update.form()" 
+      v-slot="{ errors, processing, recentlySuccessful }">
+  <Input 
+    id="name" 
+    name="name" 
+    :default-value="user.name" 
+    required 
+  />
+  <Input 
+    id="email" 
+    type="email" 
+    name="email" 
+    :default-value="user.email" 
+    required 
+  />
+  <Button :disabled="processing">Save</Button>
+  <Transition>
+    <p v-show="recentlySuccessful">Saved.</p>
+  </Transition>
+</Form>
+```
+
+### Appearance Settings
+
+Customize the application appearance.
+
+- **Theme Selection**: Light, dark, or system theme
+- **Persistent Preferences**: Settings saved per user
+- **Real-time Preview**: See changes immediately
+
+```vue
+// Appearance.vue
+<AppearanceTabs />
+<!-- Theme switcher with light/dark/system options -->
+```
+
+**Theme Handling:**
+
+```php
+// app/Http/Middleware/HandleAppearance.php
+// Manages theme preferences via middleware
+```
+
+### Password Management
+
+Secure password change functionality.
+
+- Current password verification
+- Password strength requirements
+- Bcrypt hashing
+- Session invalidation on change
+
+## UI Components & Design
+
+### Component Library
+
+MediaStream includes a comprehensive UI component library built on Reka UI.
+
+<CardGroup cols={3}>
+  <Card title="Forms" icon="input-text">
+    Input, Select, Checkbox, Label components
+  </Card>
+  <Card title="Navigation" icon="bars">
+    Breadcrumbs, Sidebar, Navigation menus
+  </Card>
+  <Card title="Feedback" icon="comment">
+    Alerts, Badges, Spinners, Progress bars
+  </Card>
+  <Card title="Layout" icon="table-cells">
+    Cards, Dialogs, Sheets, Separators
+  </Card>
+  <Card title="Data Display" icon="table">
+    Avatars, Tooltips, Collapsibles
+  </Card>
+  <Card title="Utilities" icon="wrench">
+    Icons (Lucide), Typography, Skeleton loaders
+  </Card>
+</CardGroup>
+
+**Component Usage:**
+
+```vue
+<script setup>
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Card } from '@/components/ui/card'
+</script>
+
+<template>
+  <Card>
+    <Input placeholder="Enter text..." />
+    <Button>Submit</Button>
+  </Card>
+</template>
+```
+
+### Responsive Design
+
+Fully responsive interface built with Tailwind CSS 4.
+
+- Mobile-first approach
+- Adaptive grid layouts
+- Touch-friendly interactions
+- Responsive navigation
+
+### App Shell
+
+Consistent application layout across all pages.
+
+<Info>
+  The AppShell component provides a unified layout with header, sidebar, and content area used throughout the application.
+</Info>
+
+**Layout Components:**
+- `AppShell.vue` - Main application wrapper
+- `AppHeader.vue` - Top navigation bar
+- `AppSidebar.vue` - Collapsible sidebar navigation
+- `AppContent.vue` - Main content area
+- `Breadcrumbs.vue` - Navigation breadcrumbs
+
+## API Integration
+
+### Mediastream Service
+
+Centralized service for Mediastream API communication.
+
+```php
+// app/Http/Services/MediastreamService.php
+class MediastreamService
+{
+    public static function request(
+        string $endpoint, 
+        string $method = 'get', 
+        array $data = []
+    ): Response {
+        $baseUrl = rtrim(env('MEDIASTREAM_API_URL'), '/');
+        $url = $baseUrl . '/' . ltrim($endpoint, '/');
+        
+        $client = Http::withHeaders([
+            'X-API-Token' => env('MEDIASTREAM_API_KEY'),
+            'Accept' => 'application/json',
+        ]);
+        
+        return match(strtolower($method)) {
+            'post' => $client->post($url, $data),
+            'put' => $client->put($url, $data),
+            'delete' => $client->delete($url, $data),
+            default => $client->get($url, $data),
+        };
+    }
+}
+```
+
+**Configuration:**
+
+```env
+MEDIASTREAM_API_URL=https://api.mdstrm.com
+MEDIASTREAM_API_KEY=your_api_key_here
+```
+
+### RESTful API
+
+Complete REST API for all content management operations.
+
+**API Features:**
+- JSON responses
+- Standard HTTP methods (GET, POST, PUT, DELETE)
+- Authentication via session
+- Consistent error handling
+- Resource nesting (series/seasons/episodes)
+
+## Development Features
+
+### Modern Development Workflow
+
+<CardGroup cols={2}>
+  <Card title="Hot Module Replacement" icon="bolt">
+    Instant updates with Vite HMR during development
+  </Card>
+  <Card title="TypeScript" icon="code">
+    Full type safety across Vue components
+  </Card>
+  <Card title="Code Quality" icon="check">
+    ESLint and Prettier for consistent code style
+  </Card>
+  <Card title="Testing" icon="flask">
+    Pest PHP for backend testing
+  </Card>
+</CardGroup>
+
+**Development Scripts:**
+
+```json
+// composer.json
+"scripts": {
+  "dev": "Runs server, queue, logs, and vite concurrently",
+  "test": "Runs Pest test suite",
+  "setup": "Complete project setup"
+}
+
+// package.json
+"scripts": {
+  "dev": "vite",
+  "build": "vite build",
+  "lint": "eslint . --fix",
+  "format": "prettier --write resources/"
+}
+```
+
+### Type Safety
+
+TypeScript throughout the frontend for better developer experience.
+
+```typescript
+// Type definitions for props
+interface Props {
+  _id: string
+  title: string
+  description: string
+  images: {
+    _id: string
+    path: string
+    basePath: string
+  }[]
+}
+
+defineProps<{ data: Props[] }>()
+```
+
+### Form Validation
+
+Robust form validation with VeeValidate and Zod.
+
+```typescript
+import { useForm } from 'vee-validate'
+import { toTypedSchema } from '@vee-validate/zod'
+import * as z from 'zod'
+
+const schema = z.object({
+  series_name: z.string().min(1),
+  series_type: z.enum(['tvshow'])
+})
+
+const { errors, values } = useForm({
+  validationSchema: toTypedSchema(schema)
+})
+```
+
+## Performance & Optimization
+
+### Build Optimization
+
+- **Code Splitting**: Automatic route-based code splitting
+- **Asset Optimization**: Vite optimizes CSS and JS bundles
+- **Image CDN**: Images served from Mediastream CDN
+- **Lazy Loading**: Components loaded on demand
+
+### Database
+
+- **SQLite Default**: Zero-configuration database for development
+- **Migration Support**: Version-controlled schema changes
+- **Query Optimization**: Eloquent ORM with eager loading
+- **Cache Support**: Multiple cache drivers (database, Redis, Memcached)
+
+### Queue System
+
+```php
+// Queue configuration for async operations
+QUEUE_CONNECTION=database
+
+// Run queue worker
+php artisan queue:listen --tries=1
+```
+
+## Production Features
+
+<Warning>
+  Before deploying to production, ensure you configure secure environment variables, enable HTTPS, and set up proper database backups.
+</Warning>
+
+### Security
+
+- CSRF protection on all forms
+- SQL injection prevention via Eloquent
+- XSS protection with Vue's template escaping
+- Rate limiting on authentication routes
+- Secure password hashing with Bcrypt
+
+### Deployment
+
+```bash
+# Production setup script
+composer setup
+
+# Build frontend assets
+npm run build
+
+# Run migrations
+php artisan migrate --force
+```
+
+### Error Handling
+
+- Exception logging to configured channels
+- User-friendly error pages
+- API error responses with proper status codes
+- Frontend error boundaries
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card
+    title="Installation Guide"
+    icon="download"
+    href="/getting-started/installation"
+  >
+    Set up MediaStream in your environment
+  </Card>
+  <Card
+    title="User Guide"
+    icon="book"
+    href="/user-guide/dashboard"
+  >
+    Learn how to use MediaStream features
+  </Card>
+  <Card
+    title="API Documentation"
+    icon="code"
+    href="/api/authentication/overview"
+  >
+    Integrate with the MediaStream API
+  </Card>
+  <Card
+    title="Architecture"
+    icon="sitemap"
+    href="/development/architecture"
+  >
+    Understand the technical architecture
+  </Card>
+</CardGroup>

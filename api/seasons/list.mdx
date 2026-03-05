@@ -1,0 +1,159 @@
+---
+title: 'List Seasons'
+description: 'Retrieve all seasons for a specific series'
+api: 'GET /api/series/{showId}/seasons'
+---
+
+## Overview
+
+Retrieves a list of all seasons for a specific series. Seasons are used to organize episodes within a series, following a traditional TV show structure.
+
+## Endpoint
+
+```
+GET /api/series/{showId}/seasons
+```
+
+## Path Parameters
+
+<ParamField path="showId" type="string" required>
+  The unique identifier of the series. This is the MongoDB ObjectId of the series.
+</ParamField>
+
+## Response
+
+<ResponseField name="data" type="array">
+  Array of season objects
+  
+  <ResponseField name="_id" type="string">
+    Unique identifier for the season (MongoDB ObjectId)
+  </ResponseField>
+  
+  <ResponseField name="title" type="string">
+    The title of the season (e.g., "Season 1", "Temporada 2")
+  </ResponseField>
+  
+  <ResponseField name="description" type="string">
+    A description of the season and its content
+  </ResponseField>
+  
+  <ResponseField name="images" type="array">
+    Array of image objects associated with the season
+    
+    <ResponseField name="_id" type="string">
+      Unique identifier for the image
+    </ResponseField>
+    
+    <ResponseField name="path" type="string">
+      Relative path to the image file
+    </ResponseField>
+    
+    <ResponseField name="basePath" type="string">
+      Base path for constructing the full CDN URL. Prepend `https://platform-static.cdn.mdstrm.com` to access the image.
+    </ResponseField>
+  </ResponseField>
+</ResponseField>
+
+## Example Request
+
+```bash
+curl -X GET "https://your-domain.com/api/series/507f1f77bcf86cd799439011/seasons" \
+  -H "Accept: application/json"
+```
+
+## Example Response
+
+```json
+{
+  "data": [
+    {
+      "_id": "507f191e810c19729de860ea",
+      "title": "Season 1",
+      "description": "The first season introduces the main characters and storyline",
+      "images": [
+        {
+          "_id": "507f191e810c19729de860eb",
+          "path": "/seasons/season1-cover.jpg",
+          "basePath": "/images/seasons/507f191e810c19729de860ea/season1-cover.jpg"
+        }
+      ]
+    },
+    {
+      "_id": "507f191e810c19729de860ec",
+      "title": "Season 2",
+      "description": "The second season continues the story with new challenges",
+      "images": [
+        {
+          "_id": "507f191e810c19729de860ed",
+          "path": "/seasons/season2-cover.jpg",
+          "basePath": "/images/seasons/507f191e810c19729de860ec/season2-cover.jpg"
+        }
+      ]
+    }
+  ]
+}
+```
+
+## Error Responses
+
+<ResponseField name="error" type="object">
+  Error object returned when the request fails
+  
+  <ResponseField name="message" type="string">
+    Description of the error
+  </ResponseField>
+  
+  <ResponseField name="status" type="number">
+    HTTP status code
+  </ResponseField>
+</ResponseField>
+
+### 404 Not Found
+
+Returned when the series does not exist:
+
+```json
+{
+  "error": {
+    "message": "Series not found",
+    "status": 404
+  }
+}
+```
+
+### 500 Internal Server Error
+
+Returned when there's a server-side error:
+
+```json
+{
+  "error": {
+    "message": "Internal server error",
+    "status": 500
+  }
+}
+```
+
+## Implementation Notes
+
+- This endpoint uses Laravel's `apiResource` routing with nested resources
+- The controller proxies requests to the MediaStream API service
+- Images are served from the MediaStream CDN at `https://platform-static.cdn.mdstrm.com`
+- The response structure wraps the seasons array in a `data` key
+
+## Related Endpoints
+
+<CardGroup cols={2}>
+  <Card title="Create Season" icon="plus" href="/api/seasons/create">
+    Add a new season to the series
+  </Card>
+  <Card title="Get Season" icon="eye" href="/api/seasons/get">
+    Retrieve a specific season by ID
+  </Card>
+  <Card title="List Series" icon="film" href="/api/series/list">
+    View all available series
+  </Card>
+  <Card title="List Episodes" icon="play" href="/api/episodes/list">
+    View episodes for a season
+  </Card>
+</CardGroup>

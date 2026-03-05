@@ -1,0 +1,608 @@
+---
+title: Database Schema
+description: Database structure, migrations, and schema design patterns
+---
+
+MediaStream uses SQLite by default for development, with support for MySQL and PostgreSQL in production.
+
+## Database Configuration
+
+### Default Configuration (SQLite)
+
+```bash
+# .env
+DB_CONNECTION=sqlite
+# DB_HOST=127.0.0.1
+# DB_PORT=3306
+# DB_DATABASE=laravel
+# DB_USERNAME=root
+# DB_PASSWORD=
+```
+
+SQLite stores data in `database/database.sqlite`.
+
+<Info>
+SQLite is perfect for development and small deployments. For production with multiple users, consider PostgreSQL or MySQL.
+</Info>
+
+### Production Configuration (MySQL/PostgreSQL)
+
+```bash
+# .env
+DB_CONNECTION=mysql
+DB_HOST=127.0.0.1
+DB_PORT=3306
+DB_DATABASE=mediastream
+DB_USERNAME=root
+DB_PASSWORD=secret
+```
+
+## Migrations
+
+MediaStream includes 4 core migrations:
+
+### 1. Users Table
+
+```php
+<?php
+// database/migrations/0001_01_01_000000_create_users_table.php
+
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
+
+return new class extends Migration
+{
+    public function up(): void
+    {
+        Schema::create('users', function (Blueprint $table) {
+            $table->id();
+            $table->string('name');
+            $table->string('email')->unique();
+            $table->timestamp('email_verified_at')->nullable();
+            $table->string('password');
+            $table->rememberToken();
+            $table->timestamps();
+        });
+        
+        Schema::create('password_reset_tokens', function (Blueprint $table) {
+            $table->string('email')->primary();
+            $table->string('token');
+            $table->timestamp('created_at')->nullable();
+        });
+        
+        Schema::create('sessions', function (Blueprint $table) {
+            $table->string('id')->primary();
+            $table->foreignId('user_id')->nullable()->index();
+            $table->string('ip_address', 45)->nullable();
+            $table->text('user_agent')->nullable();
+            $table->longText('payload');
+            $table->integer('last_activity')->index();
+        });
+    }
+    
+    public function down(): void
+    {
+        Schema::dropIfExists('users');
+        Schema::dropIfExists('password_reset_tokens');
+        Schema::dropIfExists('sessions');
+    }
+};
+```
+
+**Tables created:**
+- `users` - User accounts
+- `password_reset_tokens` - Password reset tokens
+- `sessions` - Session data (when using database session driver)
+
+### 2. Cache Table
+
+```php
+<?php
+// database/migrations/0001_01_01_000001_create_cache_table.php
+
+return new class extends Migration
+{
+    public function up(): void
+    {
+        Schema::create('cache', function (Blueprint $table) {
+            $table->string('key')->primary();
+            $table->mediumText('value');
+            $table->integer('expiration');
+        });
+        
+        Schema::create('cache_locks', function (Blueprint $table) {
+            $table->string('key')->primary();
+            $table->string('owner');
+            $table->integer('expiration');
+        });
+    }
+    
+    public function down(): void
+    {
+        Schema::dropIfExists('cache');
+        Schema::dropIfExists('cache_locks');
+    }
+};
+```
+
+**Tables created:**
+- `cache` - Cached data
+- `cache_locks` - Atomic locks for cache operations
+
+### 3. Jobs Table
+
+```php
+<?php
+// database/migrations/0001_01_01_000002_create_jobs_table.php
+
+return new class extends Migration
+{
+    public function up(): void
+    {
+        Schema::create('jobs', function (Blueprint $table) {
+            $table->id();
+            $table->string('queue')->index();
+            $table->longText('payload');
+            $table->unsignedTinyInteger('attempts');
+            $table->unsignedInteger('reserved_at')->nullable();
+            $table->unsignedInteger('available_at');
+            $table->unsignedInteger('created_at');
+        });
+        
+        Schema::create('job_batches', function (Blueprint $table) {
+            $table->string('id')->primary();
+            $table->string('name');
+            $table->integer('total_jobs');
+            $table->integer('pending_jobs');
+            $table->integer('failed_jobs');
+            $table->longText('failed_job_ids');
+            $table->mediumText('options')->nullable();
+            $table->integer('cancelled_at')->nullable();
+            $table->integer('created_at');
+            $table->integer('finished_at')->nullable();
+        });
+        
+        Schema::create('failed_jobs', function (Blueprint $table) {
+            $table->id();
+            $table->string('uuid')->unique();
+            $table->text('connection');
+            $table->text('queue');
+            $table->longText('payload');
+            $table->longText('exception');
+            $table->timestamp('failed_at')->useCurrent();
+        });
+    }
+    
+    public function down(): void
+    {
+        Schema::dropIfExists('jobs');
+        Schema::dropIfExists('job_batches');
+        Schema::dropIfExists('failed_jobs');
+    }
+};
+```
+
+**Tables created:**
+- `jobs` - Queued jobs
+- `job_batches` - Job batches for bulk operations
+- `failed_jobs` - Failed job records
+
+### 4. Two-Factor Authentication
+
+```php
+<?php
+// database/migrations/2025_08_14_170933_add_two_factor_columns_to_users_table.php
+
+return new class extends Migration
+{
+    public function up(): void
+    {
+        Schema::table('users', function (Blueprint $table) {
+            $table->text('two_factor_secret')
+                ->after('password')
+                ->nullable();
+            $table->text('two_factor_recovery_codes')
+                ->after('two_factor_secret')
+                ->nullable();
+            $table->timestamp('two_factor_confirmed_at')
+                ->after('two_factor_recovery_codes')
+                ->nullable();
+        });
+    }
+    
+    public function down(): void
+    {
+        Schema::table('users', function (Blueprint $table) {
+            $table->dropColumn([
+                'two_factor_secret',
+                'two_factor_recovery_codes',
+                'two_factor_confirmed_at',
+            ]);
+        });
+    }
+};
+```
+
+**Columns added to `users` table:**
+- `two_factor_secret` - TOTP secret key (encrypted)
+- `two_factor_recovery_codes` - Backup recovery codes
+- `two_factor_confirmed_at` - When 2FA was enabled
+
+## Database Schema
+
+### Users Table
+
+| Column | Type | Attributes | Description |
+|--------|------|------------|-------------|
+| `id` | BIGINT | PRIMARY KEY, AUTO_INCREMENT | User ID |
+| `name` | VARCHAR(255) | NOT NULL | User's full name |
+| `email` | VARCHAR(255) | UNIQUE, NOT NULL | Email address |
+| `email_verified_at` | TIMESTAMP | NULLABLE | Email verification timestamp |
+| `password` | VARCHAR(255) | NOT NULL | Hashed password |
+| `remember_token` | VARCHAR(100) | NULLABLE | "Remember me" token |
+| `two_factor_secret` | TEXT | NULLABLE | 2FA TOTP secret |
+| `two_factor_recovery_codes` | TEXT | NULLABLE | 2FA recovery codes |
+| `two_factor_confirmed_at` | TIMESTAMP | NULLABLE | 2FA activation time |
+| `created_at` | TIMESTAMP | NULLABLE | Creation timestamp |
+| `updated_at` | TIMESTAMP | NULLABLE | Last update timestamp |
+
+### Sessions Table
+
+| Column | Type | Attributes | Description |
+|--------|------|------------|-------------|
+| `id` | VARCHAR(255) | PRIMARY KEY | Session ID |
+| `user_id` | BIGINT | NULLABLE, INDEXED, FK → users.id | Associated user |
+| `ip_address` | VARCHAR(45) | NULLABLE | User's IP address |
+| `user_agent` | TEXT | NULLABLE | Browser user agent |
+| `payload` | LONGTEXT | NOT NULL | Session data |
+| `last_activity` | INTEGER | INDEXED | Unix timestamp |
+
+### Jobs Table
+
+| Column | Type | Attributes | Description |
+|--------|------|------------|-------------|
+| `id` | BIGINT | PRIMARY KEY, AUTO_INCREMENT | Job ID |
+| `queue` | VARCHAR(255) | INDEXED | Queue name |
+| `payload` | LONGTEXT | NOT NULL | Job data |
+| `attempts` | TINYINT | NOT NULL | Retry attempts |
+| `reserved_at` | INTEGER | NULLABLE | When job was picked up |
+| `available_at` | INTEGER | NOT NULL | When job becomes available |
+| `created_at` | INTEGER | NOT NULL | Creation timestamp |
+
+## Running Migrations
+
+### Initial Setup
+
+```bash
+# Run all pending migrations
+php artisan migrate
+
+# Run migrations with confirmation prompt
+php artisan migrate --step
+
+# Run migrations in production
+php artisan migrate --force
+```
+
+### Rollback
+
+```bash
+# Rollback the last batch
+php artisan migrate:rollback
+
+# Rollback specific steps
+php artisan migrate:rollback --step=2
+
+# Rollback all migrations
+php artisan migrate:reset
+```
+
+### Fresh Install
+
+```bash
+# Drop all tables and re-run migrations
+php artisan migrate:fresh
+
+# Fresh install with seeders
+php artisan migrate:fresh --seed
+```
+
+<Note>
+`migrate:fresh` will **destroy all data**. Only use in development.
+</Note>
+
+## Creating New Migrations
+
+### Generate Migration
+
+```bash
+# Create a new table
+php artisan make:migration create_media_table
+
+# Add columns to existing table
+php artisan make:migration add_thumbnail_to_media_table --table=media
+```
+
+### Example: Media Table
+
+```php
+<?php
+// database/migrations/2025_03_05_000000_create_media_table.php
+
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
+
+return new class extends Migration
+{
+    public function up(): void
+    {
+        Schema::create('media', function (Blueprint $table) {
+            $table->id();
+            $table->foreignId('user_id')
+                ->constrained()
+                ->onDelete('cascade');
+            $table->string('title');
+            $table->text('description')->nullable();
+            $table->enum('type', ['movie', 'episode']);
+            $table->string('file_path');
+            $table->string('thumbnail_path')->nullable();
+            $table->integer('duration')->nullable(); // in seconds
+            $table->bigInteger('file_size'); // in bytes
+            $table->string('mime_type');
+            $table->json('metadata')->nullable();
+            $table->timestamps();
+            $table->softDeletes();
+            
+            // Indexes
+            $table->index('type');
+            $table->index('created_at');
+        });
+    }
+    
+    public function down(): void
+    {
+        Schema::dropIfExists('media');
+    }
+};
+```
+
+## Seeders
+
+Seed the database with test data:
+
+```php
+<?php
+// database/seeders/UserSeeder.php
+
+namespace Database\Seeders;
+
+use App\Models\User;
+use Illuminate\Database\Seeder;
+use Illuminate\Support\Facades\Hash;
+
+class UserSeeder extends Seeder
+{
+    public function run(): void
+    {
+        // Create admin user
+        User::create([
+            'name' => 'Admin User',
+            'email' => 'admin@example.com',
+            'password' => Hash::make('password'),
+            'email_verified_at' => now(),
+        ]);
+        
+        // Create test users
+        User::factory(10)->create();
+    }
+}
+```
+
+**Run seeders:**
+
+```bash
+php artisan db:seed
+php artisan db:seed --class=UserSeeder
+```
+
+## Database Factories
+
+Generate fake data for testing:
+
+```php
+<?php
+// database/factories/UserFactory.php
+
+namespace Database\Factories;
+
+use Illuminate\Database\Eloquent\Factories\Factory;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Str;
+
+class UserFactory extends Factory
+{
+    protected static ?string $password = null;
+    
+    public function definition(): array
+    {
+        return [
+            'name' => fake()->name(),
+            'email' => fake()->unique()->safeEmail(),
+            'email_verified_at' => now(),
+            'password' => static::$password ??= Hash::make('password'),
+            'remember_token' => Str::random(10),
+        ];
+    }
+    
+    public function unverified(): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'email_verified_at' => null,
+        ]);
+    }
+}
+```
+
+**Usage:**
+
+```php
+// Create a single user
+$user = User::factory()->create();
+
+// Create 10 users
+User::factory(10)->create();
+
+// Create unverified user
+$user = User::factory()->unverified()->create();
+```
+
+## Query Builder
+
+### Basic Queries
+
+```php
+use App\Models\User;
+
+// Find by ID
+$user = User::find(1);
+
+// Find by email
+$user = User::where('email', 'admin@example.com')->first();
+
+// Get all users
+$users = User::all();
+
+// Get paginated users
+$users = User::paginate(15);
+
+// Create user
+$user = User::create([
+    'name' => 'John Doe',
+    'email' => 'john@example.com',
+    'password' => Hash::make('password'),
+]);
+
+// Update user
+$user->update(['name' => 'Jane Doe']);
+
+// Delete user
+$user->delete();
+```
+
+### Advanced Queries
+
+```php
+// Where clauses
+User::where('email_verified_at', '!=', null)
+    ->where('created_at', '>', now()->subDays(7))
+    ->get();
+
+// Ordering
+User::orderBy('created_at', 'desc')->get();
+
+// Limiting
+User::take(10)->get();
+
+// Counting
+$count = User::where('email_verified_at', '!=', null)->count();
+
+// Aggregates
+$oldest = User::min('created_at');
+$newest = User::max('created_at');
+```
+
+## Database Transactions
+
+Ensure data consistency with transactions:
+
+```php
+use Illuminate\Support\Facades\DB;
+
+DB::transaction(function () {
+    $user = User::create([...]);
+    $profile = Profile::create(['user_id' => $user->id, ...]);
+    
+    // If any query fails, all changes are rolled back
+});
+```
+
+## Best Practices
+
+<AccordionGroup>
+  <Accordion title="Migration Design">
+    - One migration per logical change
+    - Always include `down()` method for rollback
+    - Use descriptive migration names
+    - Add indexes for frequently queried columns
+    - Use foreign key constraints for relationships
+  </Accordion>
+  
+  <Accordion title="Schema Design">
+    - Use appropriate column types (VARCHAR vs TEXT)
+    - Set NOT NULL for required fields
+    - Add default values where appropriate
+    - Use ENUM for fixed value sets
+    - Include timestamps for auditing
+  </Accordion>
+  
+  <Accordion title="Performance">
+    - Index foreign keys and frequently queried columns
+    - Use `select()` to load only needed columns
+    - Eager load relationships to avoid N+1 queries
+    - Use chunking for large datasets
+    - Consider database-specific optimizations
+  </Accordion>
+  
+  <Accordion title="Security">
+    - Never store plain text passwords
+    - Encrypt sensitive data (2FA secrets)
+    - Use prepared statements (Eloquent does this automatically)
+    - Validate and sanitize all user input
+    - Use transactions for critical operations
+  </Accordion>
+</AccordionGroup>
+
+## Database Backup
+
+### SQLite
+
+```bash
+# Backup
+cp database/database.sqlite database/backup.sqlite
+
+# Restore
+cp database/backup.sqlite database/database.sqlite
+```
+
+### MySQL
+
+```bash
+# Backup
+mysqldump -u root -p mediastream > backup.sql
+
+# Restore
+mysql -u root -p mediastream < backup.sql
+```
+
+### PostgreSQL
+
+```bash
+# Backup
+pg_dump mediastream > backup.sql
+
+# Restore
+psql mediastream < backup.sql
+```
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Backend Development" icon="server" href="/development/backend">
+    Learn about models and Eloquent ORM
+  </Card>
+  <Card title="Architecture Overview" icon="sitemap" href="/development/architecture">
+    Understand the full system architecture
+  </Card>
+</CardGroup>

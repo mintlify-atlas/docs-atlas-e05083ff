@@ -1,0 +1,304 @@
+---
+title: System Architecture
+description: Overview of MediaStream's Laravel + Vue.js + Inertia.js technology stack and architectural patterns
+---
+
+MediaStream is built on a modern full-stack architecture combining Laravel 12 (backend), Vue.js 3 (frontend), and Inertia.js as the bridge between them.
+
+## Technology Stack
+
+### Backend (Laravel 12)
+
+The server-side is powered by Laravel with the following key dependencies:
+
+```json
+{
+  "php": "^8.2",
+  "laravel/framework": "^12.0",
+  "inertiajs/inertia-laravel": "^2.0",
+  "laravel/fortify": "^1.30",
+  "laravel/wayfinder": "^0.1.9",
+  "laravel/tinker": "^2.10.1"
+}
+```
+
+<Info>
+Laravel 12 requires PHP 8.2 or higher and includes the latest performance optimizations and type safety improvements.
+</Info>
+
+### Frontend (Vue.js 3 + TypeScript)
+
+The client-side uses Vue.js 3 with TypeScript and modern tooling:
+
+```json
+{
+  "vue": "^3.5.13",
+  "@inertiajs/vue3": "^2.1.0",
+  "typescript": "^5.2.2",
+  "vite": "^7.0.4",
+  "tailwindcss": "^4.1.1"
+}
+```
+
+**UI Components:**
+- **reka-ui** (^2.6.0) - Headless component primitives
+- **lucide-vue-next** (^0.468.0) - Icon system
+- **vee-validate** + **zod** - Form validation
+- **@vueuse/core** - Composition utilities
+
+## Architectural Patterns
+
+### Inertia.js - The Modern Monolith
+
+Inertia.js enables building SPAs without building an API. It acts as the glue between Laravel and Vue:
+
+```php
+// app/Http/Controllers/Web/SeriesController.php
+public function index()
+{
+    $response = MediastreamService::request('/show', 'get');
+    
+    return Inertia::render('(media)/series/index', [
+        'data' => $response->successful() ? $response->json('data') : [],
+    ]);
+}
+```
+
+```typescript
+// resources/js/app.ts
+createInertiaApp({
+    title: (title) => (title ? `${title} - ${appName}` : appName),
+    resolve: (name) =>
+        resolvePageComponent(
+            `./pages/${name}.vue`,
+            import.meta.glob<DefineComponent>('./pages/**/*.vue'),
+        ),
+    setup({ el, App, props, plugin }) {
+        createApp({ render: () => h(App, props) })
+            .use(plugin)
+            .mount(el);
+    },
+});
+```
+
+<Note>
+Inertia eliminates the need for a REST or GraphQL API layer between Laravel and Vue, while still providing a SPA experience.
+</Note>
+
+### Shared Data via Middleware
+
+Global data is shared across all Inertia responses through middleware:
+
+```php
+// app/Http/Middleware/HandleInertiaRequests.php:37
+public function share(Request $request): array
+{
+    return [
+        ...parent::share($request),
+        'name' => config('app.name'),
+        'auth' => [
+            'user' => $request->user(),
+        ],
+        'sidebarOpen' => ! $request->hasCookie('sidebar_state') 
+            || $request->cookie('sidebar_state') === 'true',
+    ];
+}
+```
+
+This data is available in all Vue components via `$page.props`.
+
+## Directory Structure
+
+### Backend Structure
+
+```
+app/
+├── Actions/          # Fortify actions (user registration, password reset)
+│   └── Fortify/
+├── Http/
+│   ├── Controllers/  # Request handlers
+│   │   ├── Api/      # API endpoints for AJAX requests
+│   │   ├── Web/      # Inertia page controllers
+│   │   └── Settings/ # User settings controllers
+│   ├── Middleware/   # HTTP middleware (Inertia, Appearance)
+│   ├── Requests/     # Form request validation
+│   └── Services/     # Business logic services
+├── Models/           # Eloquent models
+└── Providers/        # Service providers
+```
+
+### Frontend Structure
+
+```
+resources/js/
+├── app.ts            # Client-side entry point
+├── ssr.ts            # Server-side rendering entry point
+├── components/       # Reusable components
+│   ├── custom/       # Application-specific components
+│   ├── template/     # Feature components (media, series)
+│   └── ui/           # Base UI components (23+ components)
+├── composables/      # Vue composition functions
+├── layouts/          # Page layouts (App, Auth, Settings)
+├── lib/              # Utility libraries
+├── pages/            # Inertia page components (22+ pages)
+│   ├── (media)/      # Media management pages (grouped route)
+│   ├── auth/         # Authentication pages
+│   └── settings/     # User settings pages
+└── types/            # TypeScript type definitions
+```
+
+## Routing Architecture
+
+### Laravel Wayfinder
+
+MediaStream uses Laravel Wayfinder for file-based routing:
+
+```typescript
+// vite.config.ts
+import { wayfinder } from '@laravel/vite-plugin-wayfinder';
+
+export default defineConfig({
+    plugins: [
+        wayfinder({
+            formVariants: true,
+        }),
+    ],
+});
+```
+
+### Route Organization
+
+Routes are split across multiple files:
+
+- `routes/web.php` - Inertia page routes (resources/js/pages)
+- `routes/api.php` - API routes for AJAX requests
+- `routes/settings.php` - User settings routes
+
+```php
+// routes/web.php
+Route::middleware('auth')->group(function () {
+    Route::resource('series', SeriesController::class)
+        ->parameters(['series' => 'showId']);
+    
+    Route::resource('series.seasons', SeasonController::class)
+        ->parameters([
+            'series' => 'showId',
+            'seasons' => 'seasonId',
+        ]);
+});
+```
+
+## External API Integration
+
+MediaStream integrates with an external media streaming API via a centralized service:
+
+```php
+// app/Http/Services/MediastreamService.php:10
+public static function request(string $endpoint, string $method = 'get', array $data = []): Response
+{
+    $baseUrl = rtrim(env('MEDIASTREAM_API_URL'), '/');
+    $url = $baseUrl . '/' . ltrim($endpoint, '/');
+    
+    $client = Http::withHeaders([
+        'X-API-Token' => env('MEDIASTREAM_API_KEY'),
+        'Accept' => 'application/json',
+    ]);
+    
+    return $client->{$method}($url, $data);
+}
+```
+
+<Info>
+All external API calls are centralized through `MediastreamService` for consistent authentication and error handling.
+</Info>
+
+## Build System
+
+### Vite Configuration
+
+MediaStream uses Vite 7 for lightning-fast builds:
+
+```typescript
+// vite.config.ts
+export default defineConfig({
+    plugins: [
+        laravel({
+            input: ['resources/js/app.ts'],
+            ssr: 'resources/js/ssr.ts',
+            refresh: true,
+        }),
+        tailwindcss(),
+        wayfinder({ formVariants: true }),
+        vue({
+            template: {
+                transformAssetUrls: {
+                    base: null,
+                    includeAbsolute: false,
+                },
+            },
+        }),
+    ],
+});
+```
+
+### Development Scripts
+
+The `composer.json` includes convenient development scripts:
+
+```json
+{
+  "scripts": {
+    "dev": "npx concurrently \"php artisan serve\" \"php artisan queue:listen\" \"php artisan pail\" \"npm run dev\"",
+    "dev:ssr": "npm run build:ssr && npx concurrently \"php artisan serve\" \"php artisan inertia:start-ssr\""
+  }
+}
+```
+
+Run `composer dev` to start all development services in parallel.
+
+## Authentication & Security
+
+### Laravel Fortify
+
+User authentication is handled by Laravel Fortify with two-factor authentication support:
+
+- Registration, login, password reset
+- Two-factor authentication (TOTP)
+- Email verification (optional)
+- Password confirmation
+
+See `app/Actions/Fortify/` for implementation details.
+
+## SSR Support
+
+MediaStream includes optional server-side rendering:
+
+```typescript
+// resources/js/ssr.ts
+import { createInertiaApp } from '@inertiajs/vue3';
+import { renderToString } from '@vue/server-renderer';
+import { createSSRApp, h } from 'vue';
+
+createInertiaApp({
+    render: renderToString,
+    setup({ App, props, plugin }) {
+        return createSSRApp({ render: () => h(App, props) }).use(plugin);
+    },
+});
+```
+
+Build for SSR with `npm run build:ssr` and start with `php artisan inertia:start-ssr`.
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Frontend Development" icon="vuejs" href="/development/frontend">
+    Learn about Vue.js components, composables, and TypeScript patterns
+  </Card>
+  <Card title="Backend Development" icon="server" href="/development/backend">
+    Explore Laravel controllers, services, and API integration
+  </Card>
+  <Card title="Database Schema" icon="database" href="/development/database">
+    Understand the database structure and migrations
+  </Card>
+</CardGroup>

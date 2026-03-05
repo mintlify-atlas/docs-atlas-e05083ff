@@ -1,0 +1,584 @@
+---
+title: Frontend Development
+description: Guide to developing with Vue.js 3, TypeScript, and the component architecture
+---
+
+MediaStream's frontend is built with Vue.js 3, TypeScript, and a comprehensive set of reusable UI components.
+
+## Project Structure
+
+### Entry Points
+
+```typescript
+// resources/js/app.ts - Client-side entry
+import '../css/app.css';
+import { createInertiaApp } from '@inertiajs/vue3';
+import { resolvePageComponent } from 'laravel-vite-plugin/inertia-helpers';
+import { createApp, h } from 'vue';
+import { initializeTheme } from './composables/useAppearance';
+
+const appName = import.meta.env.VITE_APP_NAME || 'Laravel';
+
+createInertiaApp({
+    title: (title) => (title ? `${title} - ${appName}` : appName),
+    resolve: (name) =>
+        resolvePageComponent(
+            `./pages/${name}.vue`,
+            import.meta.glob<DefineComponent>('./pages/**/*.vue'),
+        ),
+    setup({ el, App, props, plugin }) {
+        createApp({ render: () => h(App, props) })
+            .use(plugin)
+            .mount(el);
+    },
+    progress: {
+        color: '#4B5563',
+    },
+});
+
+initializeTheme();
+```
+
+## TypeScript Configuration
+
+The project uses strict TypeScript with path aliases:
+
+```json
+{
+  "compilerOptions": {
+    "target": "ESNext",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "strict": true,
+    "jsx": "preserve",
+    "jsxImportSource": "vue",
+    "paths": {
+      "@/*": ["./resources/js/*"]
+    },
+    "types": ["vite/client", "./resources/js/types"]
+  }
+}
+```
+
+<Info>
+Use the `@/` alias to import from `resources/js/`. For example: `import { useAppearance } from '@/composables/useAppearance'`
+</Info>
+
+## Type Definitions
+
+### Shared Types
+
+Global types are defined in `resources/js/types/index.d.ts`:
+
+```typescript
+export interface Auth {
+    user: User;
+}
+
+export interface User {
+    id: number;
+    name: string;
+    email: string;
+    avatar?: string;
+    email_verified_at: string | null;
+    created_at: string;
+    updated_at: string;
+}
+
+export type AppPageProps<
+    T extends Record<string, unknown> = Record<string, unknown>,
+> = T & {
+    name: string;
+    quote: { message: string; author: string };
+    auth: Auth;
+    sidebarOpen: boolean;
+};
+
+export interface NavItem {
+    title: string;
+    href: NonNullable<InertiaLinkProps['href']>;
+    icon?: LucideIcon;
+    isActive?: boolean;
+    children?: NavItem[];
+}
+```
+
+### Using Types in Components
+
+```vue
+<script setup lang="ts">
+import type { AppPageProps } from '@/types';
+
+defineProps<{
+  data: AppPageProps<{
+    series: Array<{ id: string; title: string }>;
+  }>;
+}>();
+</script>
+```
+
+## Page Components
+
+Inertia pages live in `resources/js/pages/` and use file-based routing:
+
+```
+pages/
+├── Dashboard.vue                    # /dashboard
+├── Welcome.vue                      # /
+├── (media)/                         # Route group
+│   ├── series/
+│   │   ├── index.vue               # /series
+│   │   ├── create/
+│   │   │   └── index.vue           # /series/create
+│   │   └── [showId]/
+│   │       └── index.vue           # /series/{showId}
+│   ├── seasons/
+│   │   └── index.vue
+│   └── vod/
+│       ├── index.vue
+│       └── upload/
+│           └── index.vue
+├── auth/
+│   ├── Login.vue
+│   ├── Register.vue
+│   └── ForgotPassword.vue
+└── settings/
+    ├── Profile.vue
+    └── Security.vue
+```
+
+<Note>
+Folders wrapped in parentheses like `(media)` are route groups that don't affect the URL structure.
+</Note>
+
+### Example Page Component
+
+```vue
+<script setup lang="ts">
+import AppLayout from '@/layouts/AppLayout.vue';
+import { Head } from '@inertiajs/vue3';
+
+defineProps<{
+  data: Array<{ _id: string; title: string; type: string }>;
+}>();
+</script>
+
+<template>
+  <AppLayout>
+    <Head title="Series" />
+    
+    <div class="container mx-auto p-6">
+      <h1 class="text-2xl font-bold mb-4">TV Series</h1>
+      
+      <div v-for="series in data" :key="series._id">
+        {{ series.title }}
+      </div>
+    </div>
+  </AppLayout>
+</template>
+```
+
+## Layouts
+
+MediaStream uses three main layout components:
+
+### AppLayout (Authenticated)
+
+```vue
+<!-- resources/js/layouts/AppLayout.vue -->
+<script setup lang="ts">
+import AppHeaderLayout from './app/AppHeaderLayout.vue';
+import AppSidebarLayout from './app/AppSidebarLayout.vue';
+</script>
+
+<template>
+  <div class="flex h-screen">
+    <AppSidebarLayout />
+    <div class="flex-1 flex flex-col">
+      <AppHeaderLayout />
+      <main class="flex-1 overflow-auto">
+        <slot />
+      </main>
+    </div>
+  </div>
+</template>
+```
+
+### AuthLayout (Guest)
+
+Used for login, registration, and password reset pages.
+
+### SettingsLayout
+
+Used for user settings pages with a dedicated sidebar.
+
+## Composables
+
+Vue composables provide reusable logic across components:
+
+### useAppearance
+
+Manages light/dark theme with SSR support:
+
+```typescript
+// resources/js/composables/useAppearance.ts
+import { onMounted, ref } from 'vue';
+
+type Appearance = 'light' | 'dark' | 'system';
+
+export function useAppearance() {
+    const appearance = ref<Appearance>('system');
+    
+    onMounted(() => {
+        const savedAppearance = localStorage.getItem('appearance') as Appearance | null;
+        if (savedAppearance) {
+            appearance.value = savedAppearance;
+        }
+    });
+    
+    function updateAppearance(value: Appearance) {
+        appearance.value = value;
+        localStorage.setItem('appearance', value);
+        setCookie('appearance', value); // For SSR
+        updateTheme(value);
+    }
+    
+    return { appearance, updateAppearance };
+}
+
+export function initializeTheme() {
+    // Called on page load to apply saved theme
+    const savedAppearance = getStoredAppearance();
+    updateTheme(savedAppearance || 'system');
+}
+```
+
+**Usage:**
+
+```vue
+<script setup lang="ts">
+import { useAppearance } from '@/composables/useAppearance';
+
+const { appearance, updateAppearance } = useAppearance();
+</script>
+
+<template>
+  <select v-model="appearance" @change="updateAppearance(appearance)">
+    <option value="light">Light</option>
+    <option value="dark">Dark</option>
+    <option value="system">System</option>
+  </select>
+</template>
+```
+
+### useTwoFactorAuth
+
+Handles two-factor authentication setup:
+
+```typescript
+// resources/js/composables/useTwoFactorAuth.ts
+import { ref } from 'vue';
+import { router } from '@inertiajs/vue3';
+
+export function useTwoFactorAuth() {
+    const qrCode = ref<string | null>(null);
+    const recoveryCodes = ref<string[]>([]);
+    
+    function enable() {
+        router.post('/user/two-factor-authentication');
+    }
+    
+    function disable() {
+        router.delete('/user/two-factor-authentication');
+    }
+    
+    return { qrCode, recoveryCodes, enable, disable };
+}
+```
+
+### useInitials
+
+Generates user initials for avatars:
+
+```typescript
+// resources/js/composables/useInitials.ts
+export function useInitials(name: string): string {
+    return name
+        .split(' ')
+        .map(word => word[0])
+        .join('')
+        .toUpperCase()
+        .slice(0, 2);
+}
+```
+
+## UI Components
+
+MediaStream includes 23+ reusable UI components built with **reka-ui** (headless primitives):
+
+```
+resources/js/components/ui/
+├── alert/
+├── avatar/
+├── badge/
+├── breadcrumb/
+├── button/
+├── card/
+├── checkbox/
+├── collapsible/
+├── dialog/
+├── dropdown-menu/
+├── form/
+├── input/
+├── label/
+├── select/
+├── separator/
+├── sheet/
+├── skeleton/
+├── switch/
+├── table/
+├── tabs/
+├── textarea/
+├── toast/
+└── tooltip/
+```
+
+### Example: Button Component
+
+```vue
+<script setup lang="ts">
+import { Button } from '@/components/ui/button';
+import { Loader2 } from 'lucide-vue-next';
+</script>
+
+<template>
+  <Button variant="primary" size="lg" :disabled="loading">
+    <Loader2 v-if="loading" class="mr-2 h-4 w-4 animate-spin" />
+    Save Changes
+  </Button>
+</template>
+```
+
+## Form Validation
+
+Forms use **vee-validate** with **Zod** schemas:
+
+```vue
+<script setup lang="ts">
+import { useForm } from 'vee-validate';
+import { toTypedSchema } from '@vee-validate/zod';
+import * as z from 'zod';
+import { router } from '@inertiajs/vue3';
+
+const schema = toTypedSchema(
+  z.object({
+    series_name: z.string().min(1, 'Title is required'),
+    series_type: z.enum(['tvshow', 'movie']),
+  })
+);
+
+const { handleSubmit, errors } = useForm({
+  validationSchema: schema,
+});
+
+const onSubmit = handleSubmit((values) => {
+  router.post('/series', values);
+});
+</script>
+
+<template>
+  <form @submit="onSubmit">
+    <FormField name="series_name" v-slot="{ field }">
+      <FormItem>
+        <FormLabel>Series Title</FormLabel>
+        <FormControl>
+          <Input v-bind="field" />
+        </FormControl>
+        <FormMessage />
+      </FormItem>
+    </FormField>
+    
+    <Button type="submit">Create Series</Button>
+  </form>
+</template>
+```
+
+## Icons
+
+MediaStream uses **lucide-vue-next** for icons:
+
+```vue
+<script setup lang="ts">
+import { Film, Tv, Upload, Settings } from 'lucide-vue-next';
+</script>
+
+<template>
+  <div class="flex gap-2">
+    <Film class="h-5 w-5" />
+    <Tv class="h-5 w-5" />
+    <Upload class="h-5 w-5" />
+    <Settings class="h-5 w-5" />
+  </div>
+</template>
+```
+
+Browse all icons at [lucide.dev](https://lucide.dev/icons).
+
+## Styling with Tailwind CSS
+
+MediaStream uses Tailwind CSS 4 with the Vite plugin:
+
+```typescript
+// vite.config.ts
+import tailwindcss from '@tailwindcss/vite';
+
+export default defineConfig({
+    plugins: [
+        tailwindcss(),
+    ],
+});
+```
+
+### Utility Functions
+
+For conditional classes, use `clsx` and `tailwind-merge`:
+
+```typescript
+import { clsx, type ClassValue } from 'clsx';
+import { twMerge } from 'tailwind-merge';
+
+export function cn(...inputs: ClassValue[]) {
+  return twMerge(clsx(inputs));
+}
+```
+
+**Usage:**
+
+```vue
+<div :class="cn('px-4 py-2', isActive && 'bg-blue-500', className)" />
+```
+
+## Inertia.js Patterns
+
+### Making Requests
+
+```typescript
+import { router } from '@inertiajs/vue3';
+
+// GET request (navigation)
+router.get('/series');
+
+// POST request
+router.post('/series', { title: 'New Series', type: 'tvshow' });
+
+// PUT request
+router.put(`/series/${id}`, formData);
+
+// DELETE request
+router.delete(`/series/${id}`, {
+  onSuccess: () => {
+    console.log('Series deleted');
+  },
+});
+```
+
+### Links
+
+```vue
+<script setup lang="ts">
+import { Link } from '@inertiajs/vue3';
+</script>
+
+<template>
+  <Link href="/series" class="text-blue-600 hover:underline">
+    View All Series
+  </Link>
+</template>
+```
+
+### Accessing Page Props
+
+```vue
+<script setup lang="ts">
+import { usePage } from '@inertiajs/vue3';
+import type { AppPageProps } from '@/types';
+
+const page = usePage<AppPageProps>();
+const user = computed(() => page.props.auth.user);
+</script>
+
+<template>
+  <div>Welcome, {{ user.name }}!</div>
+</template>
+```
+
+## Development Workflow
+
+### Running the Dev Server
+
+```bash
+# Start all services (Laravel + Vite + Queue + Logs)
+composer dev
+
+# Or run separately:
+npm run dev          # Vite dev server
+php artisan serve    # Laravel server
+```
+
+### Type Checking
+
+```bash
+# Check TypeScript types
+npm run type-check   # If configured
+vue-tsc --noEmit    # Manual check
+```
+
+### Linting
+
+```bash
+npm run lint         # ESLint with auto-fix
+npm run format       # Prettier
+```
+
+## Best Practices
+
+<AccordionGroup>
+  <Accordion title="Component Organization">
+    - Keep page components simple, extract complex logic to composables
+    - Use TypeScript interfaces for all props and emits
+    - Prefer composition API over options API
+    - Extract reusable UI patterns to `components/custom/`
+  </Accordion>
+  
+  <Accordion title="State Management">
+    - Use Inertia's shared data for global state (user, settings)
+    - Use composables for shared logic (not Pinia/Vuex)
+    - Keep component state local when possible
+    - Use props and events for parent-child communication
+  </Accordion>
+  
+  <Accordion title="Performance">
+    - Use `v-memo` for expensive list items
+    - Lazy load heavy components with `defineAsyncComponent`
+    - Avoid watchers, prefer computed properties
+    - Use `keep-alive` for frequently toggled components
+  </Accordion>
+  
+  <Accordion title="TypeScript">
+    - Enable strict mode (already configured)
+    - Define interfaces for all API responses
+    - Use `AppPageProps<T>` for page component props
+    - Avoid `any` - use `unknown` and type guards instead
+  </Accordion>
+</AccordionGroup>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Backend Development" icon="server" href="/development/backend">
+    Learn about Laravel controllers and services
+  </Card>
+  <Card title="Database Schema" icon="database" href="/development/database">
+    Explore the database structure
+  </Card>
+</CardGroup>

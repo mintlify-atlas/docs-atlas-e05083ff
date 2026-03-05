@@ -1,0 +1,220 @@
+---
+title: 'Create Episode'
+api: 'POST /api/series/{showId}/seasons/{seasonId}/chapters'
+description: 'Create a new episode (chapter) within a season'
+---
+
+## Overview
+
+This endpoint creates a new episode within a specific season of a series. Episodes contain video content, metadata, and can be played back using the MediaStream player.
+
+## Path Parameters
+
+<ParamField path="showId" type="string" required>
+  The unique identifier of the series
+</ParamField>
+
+<ParamField path="seasonId" type="string" required>
+  The unique identifier of the season
+</ParamField>
+
+## Body Parameters
+
+<ParamField body="title" type="string" required>
+  The episode title (e.g., "Episode 1: Pilot", "Introduction to Laravel")
+</ParamField>
+
+<ParamField body="description" type="string" required>
+  A description of what happens in this episode
+</ParamField>
+
+<ParamField body="content" type="array" required>
+  The video content associated with this episode. Must contain video IDs from MediaStream.
+  
+  ```json
+  [
+    {
+      "value": {
+        "_id": "5f8a3d2b1c9d440000123456"
+      }
+    }
+  ]
+  ```
+</ParamField>
+
+<ParamField body="images" type="array">
+  Optional array of thumbnail images for the episode
+</ParamField>
+
+## Request Example
+
+<CodeGroup>
+```bash cURL
+curl -X POST "https://your-domain.com/api/series/abc123/seasons/def456/chapters" \
+  -H "Content-Type: application/json" \
+  -H "Accept: application/json" \
+  -d '{
+    "title": "Episode 1: Getting Started",
+    "description": "An introduction to the series and what to expect",
+    "content": [
+      {
+        "value": {
+          "_id": "5f8a3d2b1c9d440000123456"
+        }
+      }
+    ]
+  }'
+```
+
+```javascript JavaScript
+const response = await fetch(
+  'https://your-domain.com/api/series/abc123/seasons/def456/chapters',
+  {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Accept': 'application/json'
+    },
+    body: JSON.stringify({
+      title: 'Episode 1: Getting Started',
+      description: 'An introduction to the series and what to expect',
+      content: [
+        {
+          value: {
+            _id: '5f8a3d2b1c9d440000123456'
+          }
+        }
+      ]
+    })
+  }
+);
+const data = await response.json();
+```
+
+```php PHP
+$response = MediastreamService::request(
+    '/show/' . $showId . '/season/' . $seasonId . '/episode/',
+    'post',
+    [
+        'title' => 'Episode 1: Getting Started',
+        'description' => 'An introduction to the series and what to expect',
+        'content' => [
+            [
+                'value' => [
+                    '_id' => '5f8a3d2b1c9d440000123456'
+                ]
+            ]
+        ]
+    ]
+);
+
+return $response->json();
+```
+</CodeGroup>
+
+## Response
+
+<ResponseField name="_id" type="string">
+  Unique identifier for the newly created episode
+</ResponseField>
+
+<ResponseField name="title" type="string">
+  The episode title
+</ResponseField>
+
+<ResponseField name="description" type="string">
+  The episode description
+</ResponseField>
+
+<ResponseField name="content" type="array">
+  The video content array
+</ResponseField>
+
+<ResponseField name="images" type="array">
+  Episode thumbnail images
+</ResponseField>
+
+### Success Response Example
+
+```json
+{
+  "_id": "64a7f2b1c8d4e12345abcdef",
+  "title": "Episode 1: Getting Started",
+  "description": "An introduction to the series and what to expect",
+  "content": [
+    {
+      "value": {
+        "_id": "5f8a3d2b1c9d440000123456"
+      }
+    }
+  ],
+  "images": [],
+  "createdAt": "2024-03-05T10:30:00Z",
+  "updatedAt": "2024-03-05T10:30:00Z"
+}
+```
+
+## Error Responses
+
+<AccordionGroup>
+  <Accordion title="400 Bad Request">
+    Missing required fields or invalid data format.
+    
+    ```json
+    {
+      "error": "Validation failed",
+      "details": {
+        "title": "The title field is required",
+        "content": "The content field is required"
+      }
+    }
+    ```
+  </Accordion>
+
+  <Accordion title="404 Not Found">
+    The specified series or season does not exist.
+    
+    ```json
+    {
+      "error": "Season not found"
+    }
+    ```
+  </Accordion>
+
+  <Accordion title="401 Unauthorized">
+    Invalid or missing API authentication.
+    
+    ```json
+    {
+      "error": "Unauthorized access"
+    }
+    ```
+  </Accordion>
+
+  <Accordion title="500 Internal Server Error">
+    Server error while creating the episode.
+    
+    ```json
+    {
+      "error": "Failed to create episode"
+    }
+    ```
+  </Accordion>
+</AccordionGroup>
+
+## Notes
+
+<Note>
+  Before creating an episode, ensure that:
+  1. The parent series and season exist
+  2. Video content has been uploaded to MediaStream
+  3. You have valid video IDs from MediaStream
+</Note>
+
+<Warning>
+  The `content` field must contain valid MediaStream video IDs. Invalid or non-existent video IDs will cause playback errors.
+</Warning>
+
+<Tip>
+  You can create episodes without images initially and add them later using the update endpoint.
+</Tip>

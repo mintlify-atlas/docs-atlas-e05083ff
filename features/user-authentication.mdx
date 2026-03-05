@@ -1,0 +1,613 @@
+---
+title: 'User Authentication'
+description: 'Secure authentication system with two-factor authentication (2FA) support'
+icon: 'shield-check'
+---
+
+## Overview
+
+MediaStream uses Laravel Fortify to provide a robust authentication system with modern security features. The platform includes user registration, login, password reset, email verification, and two-factor authentication (2FA).
+
+<CardGroup cols={2}>
+  <Card title="User Registration" icon="user-plus">
+    Create new accounts with email verification
+  </Card>
+  <Card title="Secure Login" icon="lock">
+    Email and password authentication with rate limiting
+  </Card>
+  <Card title="Two-Factor Auth" icon="mobile">
+    TOTP-based 2FA for enhanced security
+  </Card>
+  <Card title="Password Reset" icon="key">
+    Secure password recovery via email
+  </Card>
+</CardGroup>
+
+## Authentication Features
+
+### Built on Laravel Fortify
+
+MediaStream leverages Laravel Fortify for authentication, providing:
+
+- **Login and Registration**: Email/password authentication
+- **Password Reset**: Secure password recovery
+- **Email Verification**: Verify user email addresses
+- **Two-Factor Authentication**: TOTP-based 2FA
+- **Rate Limiting**: Protection against brute force attacks
+
+### Fortify Configuration
+
+```php
+class FortifyServiceProvider extends ServiceProvider
+{
+    public function boot(): void
+    {
+        $this->configureActions();
+        $this->configureViews();
+        $this->configureRateLimiting();
+    }
+
+    private function configureActions(): void
+    {
+        Fortify::resetUserPasswordsUsing(ResetUserPassword::class);
+        Fortify::createUsersUsing(CreateNewUser::class);
+    }
+
+    private function configureViews(): void
+    {
+        Fortify::loginView(fn (Request $request) => Inertia::render('auth/Login', [
+            'canResetPassword' => Features::enabled(Features::resetPasswords()),
+            'canRegister' => Features::enabled(Features::registration()),
+            'status' => $request->session()->get('status'),
+        ]));
+
+        Fortify::registerView(fn () => Inertia::render('auth/Register'));
+        
+        Fortify::twoFactorChallengeView(fn () => Inertia::render('auth/TwoFactorChallenge'));
+        
+        // ... other views
+    }
+
+    private function configureRateLimiting(): void
+    {
+        // Login rate limiting: 5 attempts per minute
+        RateLimiter::for('login', function (Request $request) {
+            $throttleKey = Str::transliterate(
+                Str::lower($request->input(Fortify::username())).'|'.$request->ip()
+            );
+            return Limit::perMinute(5)->by($throttleKey);
+        });
+
+        // 2FA rate limiting: 5 attempts per minute
+        RateLimiter::for('two-factor', function (Request $request) {
+            return Limit::perMinute(5)->by($request->session()->get('login.id'));
+        });
+    }
+}
+```
+
+<Tip>
+  Rate limiting protects your application from brute force attacks by limiting login attempts to 5 per minute per user.
+</Tip>
+
+## User Registration
+
+New users can create accounts through the registration page.
+
+### Registration Form
+
+```vue
+<template>
+  <AuthBase
+    title="Create an account"
+    description="Enter your details below to create your account">
+    
+    <Form v-bind="store.form()"
+      :reset-on-success="['password', 'password_confirmation']"
+      v-slot="{ errors, processing }"
+      class="flex flex-col gap-6">
+      
+      <div class="grid gap-6">
+        <!-- Name Field -->
+        <div class="grid gap-2">
+          <Label for="name">Name</Label>
+          <Input
+            id="name"
+            type="text"
+            required
+            autofocus
+            autocomplete="name"
+            name="name"
+            placeholder="Full name" />
+          <InputError :message="errors.name" />
+        </div>
+
+        <!-- Email Field -->
+        <div class="grid gap-2">
+          <Label for="email">Email address</Label>
+          <Input
+            id="email"
+            type="email"
+            required
+            autocomplete="email"
+            name="email"
+            placeholder="email@example.com" />
+          <InputError :message="errors.email" />
+        </div>
+
+        <!-- Password Field -->
+        <div class="grid gap-2">
+          <Label for="password">Password</Label>
+          <Input
+            id="password"
+            type="password"
+            required
+            autocomplete="new-password"
+            name="password"
+            placeholder="Password" />
+          <InputError :message="errors.password" />
+        </div>
+
+        <!-- Confirm Password -->
+        <div class="grid gap-2">
+          <Label for="password_confirmation">Confirm password</Label>
+          <Input
+            id="password_confirmation"
+            type="password"
+            required
+            autocomplete="new-password"
+            name="password_confirmation"
+            placeholder="Confirm password" />
+          <InputError :message="errors.password_confirmation" />
+        </div>
+
+        <Button type="submit" class="mt-2 w-full" :disabled="processing">
+          <Spinner v-if="processing" />
+          Create account
+        </Button>
+      </div>
+
+      <div class="text-center text-sm text-muted-foreground">
+        Already have an account?
+        <TextLink :href="login()">Log in</TextLink>
+      </div>
+    </Form>
+  </AuthBase>
+</template>
+```
+
+### User Creation Validation
+
+The backend validates all registration data:
+
+```php
+class CreateNewUser implements CreatesNewUsers
+{
+    use PasswordValidationRules;
+
+    public function create(array $input): User
+    {
+        Validator::make($input, [
+            'name' => ['required', 'string', 'max:255'],
+            'email' => [
+                'required',
+                'string',
+                'email',
+                'max:255',
+                Rule::unique(User::class),
+            ],
+            'password' => $this->passwordRules(),
+        ])->validate();
+
+        return User::create([
+            'name' => $input['name'],
+            'email' => $input['email'],
+            'password' => $input['password'],
+        ]);
+    }
+}
+```
+
+<Note>
+  Passwords are automatically hashed using bcrypt before being stored in the database.
+</Note>
+
+## User Login
+
+The login page provides a clean, secure interface for users to access their accounts.
+
+### Login Form
+
+```vue
+<template>
+  <AuthBase
+    title="Log in to your account"
+    description="Enter your email and password below to log in">
+    
+    <div v-if="status" class="mb-4 text-center text-sm font-medium text-green-600">
+      {{ status }}
+    </div>
+
+    <Form v-bind="store.form()"
+      :reset-on-success="['password']"
+      v-slot="{ errors, processing }"
+      class="flex flex-col gap-6">
+      
+      <div class="grid gap-6">
+        <!-- Email Field -->
+        <div class="grid gap-2">
+          <Label for="email">Email address</Label>
+          <Input
+            id="email"
+            type="email"
+            name="email"
+            required
+            autofocus
+            autocomplete="email"
+            placeholder="email@example.com" />
+          <InputError :message="errors.email" />
+        </div>
+
+        <!-- Password Field -->
+        <div class="grid gap-2">
+          <div class="flex items-center justify-between">
+            <Label for="password">Password</Label>
+            <TextLink v-if="canResetPassword" :href="request()" class="text-sm">
+              Forgot password?
+            </TextLink>
+          </div>
+          <Input
+            id="password"
+            type="password"
+            name="password"
+            required
+            autocomplete="current-password"
+            placeholder="Password" />
+          <InputError :message="errors.password" />
+        </div>
+
+        <!-- Remember Me -->
+        <div class="flex items-center justify-between">
+          <Label for="remember" class="flex items-center space-x-3">
+            <Checkbox id="remember" name="remember" />
+            <span>Remember me</span>
+          </Label>
+        </div>
+
+        <Button type="submit" class="mt-4 w-full" :disabled="processing">
+          <Spinner v-if="processing" />
+          Log in
+        </Button>
+      </div>
+
+      <div class="text-center text-sm text-muted-foreground" v-if="canRegister">
+        Don't have an account?
+        <TextLink :href="register()">Sign up</TextLink>
+      </div>
+    </Form>
+  </AuthBase>
+</template>
+```
+
+### Login Features
+
+<CardGroup cols={2}>
+  <Card title="Remember Me" icon="clock">
+    Keep users logged in across browser sessions
+  </Card>
+  <Card title="Forgot Password" icon="key">
+    Link to password reset flow
+  </Card>
+  <Card title="Auto-focus" icon="cursor">
+    Email field automatically focused
+  </Card>
+  <Card title="Status Messages" icon="info">
+    Display success/error messages
+  </Card>
+</CardGroup>
+
+## Two-Factor Authentication (2FA)
+
+MediaStream includes comprehensive 2FA support using TOTP (Time-based One-Time Password) authentication.
+
+### Enabling 2FA
+
+Users can enable 2FA from their settings page:
+
+```vue
+<template>
+  <div class="space-y-6">
+    <HeadingSmall
+      title="Two-Factor Authentication"
+      description="Manage your two-factor authentication settings" />
+
+    <!-- 2FA Disabled State -->
+    <div v-if="!twoFactorEnabled" class="flex flex-col items-start justify-start space-y-4">
+      <Badge variant="destructive">Disabled</Badge>
+
+      <p class="text-muted-foreground">
+        When you enable two-factor authentication, you will be
+        prompted for a secure pin during login. This pin can be
+        retrieved from a TOTP-supported application on your phone.
+      </p>
+
+      <div>
+        <Button v-if="hasSetupData" @click="showSetupModal = true">
+          <ShieldCheck />Continue Setup
+        </Button>
+        
+        <Form v-else v-bind="enable.form()"
+          @success="showSetupModal = true"
+          #default="{ processing }">
+          <Button type="submit" :disabled="processing">
+            <ShieldCheck />Enable 2FA
+          </Button>
+        </Form>
+      </div>
+    </div>
+
+    <!-- 2FA Enabled State -->
+    <div v-else class="flex flex-col items-start justify-start space-y-4">
+      <Badge variant="default">Enabled</Badge>
+
+      <p class="text-muted-foreground">
+        With two-factor authentication enabled, you will be
+        prompted for a secure, random pin during login, which
+        you can retrieve from the TOTP-supported application on
+        your phone.
+      </p>
+
+      <TwoFactorRecoveryCodes />
+
+      <Form v-bind="disable.form()" #default="{ processing }">
+        <Button variant="destructive" type="submit" :disabled="processing">
+          <ShieldBan />Disable 2FA
+        </Button>
+      </Form>
+    </div>
+
+    <TwoFactorSetupModal
+      v-model:isOpen="showSetupModal"
+      :requiresConfirmation="requiresConfirmation"
+      :twoFactorEnabled="twoFactorEnabled" />
+  </div>
+</template>
+```
+
+### 2FA Setup Process
+
+<Steps>
+  <Step title="Enable 2FA">
+    User clicks "Enable 2FA" button
+  </Step>
+  
+  <Step title="QR Code Generation">
+    System generates a QR code and secret key
+  </Step>
+  
+  <Step title="Scan QR Code">
+    User scans QR code with authenticator app (Google Authenticator, Authy, etc.)
+  </Step>
+  
+  <Step title="Verify Code">
+    User enters the 6-digit code from their app
+  </Step>
+  
+  <Step title="Recovery Codes">
+    System displays one-time recovery codes
+  </Step>
+  
+  <Step title="Save Recovery Codes">
+    User saves recovery codes in a secure location
+  </Step>
+  
+  <Step title="2FA Enabled">
+    Two-factor authentication is now active
+  </Step>
+</Steps>
+
+### 2FA Controller
+
+```php
+class TwoFactorAuthenticationController extends Controller implements HasMiddleware
+{
+    public static function middleware(): array
+    {
+        return Features::optionEnabled(Features::twoFactorAuthentication(), 'confirmPassword')
+            ? [new Middleware('password.confirm', only: ['show'])]
+            : [];
+    }
+
+    public function show(TwoFactorAuthenticationRequest $request): Response
+    {
+        $request->ensureStateIsValid();
+
+        return Inertia::render('settings/TwoFactor', [
+            'twoFactorEnabled' => $request->user()->hasEnabledTwoFactorAuthentication(),
+            'requiresConfirmation' => Features::optionEnabled(
+                Features::twoFactorAuthentication(), 
+                'confirm'
+            ),
+        ]);
+    }
+}
+```
+
+<Tip>
+  The 2FA settings page can optionally require password confirmation before allowing changes, adding an extra layer of security.
+</Tip>
+
+### Recovery Codes
+
+When 2FA is enabled, users receive recovery codes they can use if they lose access to their authenticator app:
+
+```vue
+<TwoFactorRecoveryCodes />
+```
+
+<Warning>
+  Recovery codes should be saved in a secure location. Each code can only be used once.
+</Warning>
+
+## Password Reset
+
+Users can securely reset their passwords through email verification.
+
+### Password Reset Flow
+
+<Steps>
+  <Step title="Request Reset">
+    User clicks "Forgot password?" on login page
+  </Step>
+  
+  <Step title="Enter Email">
+    User enters their email address
+  </Step>
+  
+  <Step title="Receive Email">
+    User receives password reset email with link
+  </Step>
+  
+  <Step title="Click Link">
+    User clicks the link in the email
+  </Step>
+  
+  <Step title="New Password">
+    User enters and confirms new password
+  </Step>
+  
+  <Step title="Password Updated">
+    Password is updated, user can log in
+  </Step>
+</Steps>
+
+## Security Features
+
+<CardGroup cols={2}>
+  <Card title="Rate Limiting" icon="gauge">
+    5 login attempts per minute to prevent brute force
+  </Card>
+  <Card title="Password Hashing" icon="lock">
+    Bcrypt hashing for all passwords
+  </Card>
+  <Card title="CSRF Protection" icon="shield">
+    Built-in CSRF token validation
+  </Card>
+  <Card title="Session Management" icon="clock">
+    Secure session handling with Laravel
+  </Card>
+  <Card title="Email Verification" icon="envelope-circle-check">
+    Verify user email addresses
+  </Card>
+  <Card title="2FA Support" icon="mobile-screen">
+    TOTP-based two-factor authentication
+  </Card>
+</CardGroup>
+
+## Authentication Layouts
+
+MediaStream uses Inertia.js with Vue for seamless authentication pages.
+
+### Auth Layout Component
+
+```vue
+<AuthBase :title="title" :description="description">
+  <slot />  <!-- Form content goes here -->
+</AuthBase>
+```
+
+The platform includes multiple layout options:
+
+- **AuthCardLayout**: Centered card design
+- **AuthSimpleLayout**: Minimalist layout
+- **AuthSplitLayout**: Split-screen design
+
+## Best Practices
+
+<AccordionGroup>
+  <Accordion title="Strong Passwords">
+    Encourage users to create strong passwords:
+    - Minimum 8 characters (configurable)
+    - Mix of uppercase, lowercase, numbers, and symbols
+    - Use password strength indicators
+    - Prevent common passwords
+  </Accordion>
+
+  <Accordion title="2FA Adoption">
+    Encourage 2FA usage:
+    - Explain benefits clearly
+    - Make setup process simple
+    - Provide clear instructions
+    - Show recovery code importance
+    - Consider making 2FA mandatory for admin users
+  </Accordion>
+
+  <Accordion title="Session Security">
+    Manage sessions securely:
+    - Set appropriate session timeouts
+    - Implement "logout from all devices"
+    - Clear sessions on password change
+    - Use secure session storage
+  </Accordion>
+
+  <Accordion title="User Experience">
+    Balance security with usability:
+    - Clear error messages
+    - Helpful validation feedback
+    - Remember me functionality
+    - Password visibility toggle
+    - Auto-focus form fields
+  </Accordion>
+</AccordionGroup>
+
+## Troubleshooting
+
+<AccordionGroup>
+  <Accordion title="Can't Log In">
+    If users can't log in:
+    1. Verify email and password are correct
+    2. Check if account is verified
+    3. Try password reset if forgotten
+    4. Check for rate limiting (wait a few minutes)
+    5. Clear browser cookies/cache
+    6. Try a different browser
+  </Accordion>
+
+  <Accordion title="2FA Issues">
+    If 2FA isn't working:
+    1. Verify time sync on phone is correct
+    2. Try entering the code again
+    3. Use recovery codes if available
+    4. Check authenticator app is working
+    5. Contact support to disable 2FA
+  </Accordion>
+
+  <Accordion title="Email Not Received">
+    If password reset email doesn't arrive:
+    1. Check spam/junk folder
+    2. Verify email address is correct
+    3. Wait a few minutes for delivery
+    4. Try requesting again
+    5. Check email server logs
+  </Accordion>
+
+  <Accordion title="Rate Limit Errors">
+    If hitting rate limits:
+    1. Wait 1 minute before trying again
+    2. Ensure correct credentials
+    3. Don't use automated tools
+    4. Clear browser cache
+    5. Contact support if issue persists
+  </Accordion>
+</AccordionGroup>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Series Management" icon="film" href="/features/series-management">
+    Start managing your video content
+  </Card>
+  <Card title="API Reference" icon="code" href="/api-reference/authentication">
+    Explore the authentication API
+  </Card>
+</CardGroup>

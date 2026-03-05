@@ -1,0 +1,472 @@
+---
+title: 'Episode Management'
+description: 'Create and manage individual episodes within your series and seasons'
+icon: 'video'
+---
+
+## Overview
+
+Episodes (also called chapters in the codebase) are the individual video content pieces within a season. MediaStream provides a comprehensive system for managing episodes with video playback, metadata, and organization.
+
+<CardGroup cols={2}>
+  <Card title="Create Episodes" icon="plus">
+    Add new episodes to any season
+  </Card>
+  <Card title="Video Playback" icon="play">
+    Stream episodes with Mediastream player
+  </Card>
+  <Card title="Edit Metadata" icon="pencil">
+    Update episode titles and descriptions
+  </Card>
+  <Card title="Manage Content" icon="list">
+    Organize episodes within seasons
+  </Card>
+</CardGroup>
+
+## Episode Structure
+
+Episodes exist within the following hierarchy:
+
+```
+Series
+└── Season
+    └── Episode (Chapter)
+        └── Video Content
+```
+
+This three-level structure provides maximum flexibility for organizing content.
+
+## Creating Episodes
+
+Episodes are created within a specific season of a series.
+
+### Episode Data Structure
+
+```typescript
+interface Episode {
+  _id: string;              // Unique episode identifier
+  title: string;            // Episode name
+  description: string;      // Episode description
+  content: Array<{          // Video content
+    value: {
+      _id: string;          // Video ID from Mediastream
+    };
+  }>;
+  images: Array<{           // Thumbnail images
+    _id: string;
+    path: string;
+    basePath: string;
+  }>;
+}
+```
+
+### Required Information
+
+<ParamField path="title" type="string" required>
+  The episode title (e.g., "Episode 1: Pilot", "Introduction to Laravel")
+</ParamField>
+
+<ParamField path="description" type="string" required>
+  A description of what happens in this episode
+</ParamField>
+
+<ParamField path="content" type="array" required>
+  The video content associated with this episode
+</ParamField>
+
+## Episode Display
+
+Episodes are displayed in a list format within the series detail view.
+
+### Episode List Component
+
+```vue
+<template>
+  <Link :href="chapters.show({ showId, seasonId, chapterId: data._id })"  
+    class="flex flex-row gap-2">
+    
+    <picture class="w-[25%]">
+      <img class="w-full aspect-video object-cover" 
+        :src="imageUrl(data)" 
+        alt="" />
+    </picture>
+    
+    <div class="flex flex-col gap-2 flex-1">
+      <Typography variant="h2" color="white" size="large">
+        {{ data?.title }}
+      </Typography>
+      <Typography variant="h2" color="white" size="base">
+        {{ data?.description }}
+      </Typography>
+    </div>
+  </Link>
+</template>
+```
+
+### Features
+
+- **Thumbnail Preview**: Shows episode thumbnail image
+- **Title and Description**: Clear episode information
+- **Clickable**: Opens the episode player view
+- **Responsive Layout**: Adapts to different screen sizes
+
+## Video Playback
+
+When you click on an episode, MediaStream provides two playback options:
+
+<CardGroup cols={2}>
+  <Card title="Native HTML5 Player" icon="play-circle">
+    Browser's built-in video player with HLS support
+  </Card>
+  <Card title="Mediastream Player" icon="film">
+    Advanced player with analytics and features
+  </Card>
+</CardGroup>
+
+### Episode Player View
+
+```vue
+<script setup lang="ts">
+import { onMounted, ref } from 'vue';
+
+interface Props {
+  chapterDetails: {
+    content: {
+      value: {
+        _id: string;
+      };
+    }[];
+    title: string;
+    description: string;
+  };
+}
+
+const props = defineProps<Props>();
+const videoId = props?.chapterDetails?.content?.[0]?.value?._id;
+const playerContainer = ref<HTMLElement | null>(null);
+
+onMounted(async () => {
+  if (!videoId || !playerContainer.value) return;
+
+  await loadMediastreamScript();
+
+  if (window.MediastreamPlayer) {
+    const playerOptions = {
+      width: 640,
+      height: 360,
+      type: 'media',
+      id: videoId,
+      autoplay: false,
+      events: {
+        onPlayerReady: () => console.log('Player is ready'),
+        onPlay: () => console.log('Playing...'),
+        onVideoEnd: () => console.log('Video ended'),
+        onVideoError: () => console.log('Error loading video'),
+      },
+    };
+
+    new window.MediastreamPlayer(playerContainer.value.id, playerOptions);
+  }
+});
+
+async function loadMediastreamScript() {
+  if (document.getElementById('mediastream-sdk')) return;
+
+  const script = document.createElement('script');
+  script.src = 'https://platform-static.cdn.mdstrm.com/js/player_api.js';
+  script.id = 'mediastream-sdk';
+
+  return new Promise((resolve, reject) => {
+    script.onload = resolve;
+    script.onerror = reject;
+    document.body.appendChild(script);
+  });
+}
+</script>
+
+<template>
+  <div class="p-4 rounded-xl gap-4">
+    <Typography variant="h1" color="white" size="title">
+      Capítulo: {{ props?.chapterDetails?.title }}
+    </Typography>
+    
+    <Typography variant="h2" color="white" size="base" class="my-4">
+      {{ props?.chapterDetails?.description }}
+    </Typography>
+
+    <div class="flex flex-col sm:flex-row gap-8">
+      <!-- Native HTML5 Video Player -->
+      <div class="flex-1">
+        <Typography variant="h2" color="white" size="large">
+          Video Nativo
+        </Typography>
+        <div class="mt-4">
+          <video
+            class="aspect-video w-full max-w-[640px]"
+            :src="`https://mdstrm.com/video/${videoId}.m3u8`"
+            autoplay
+            controls
+          ></video>
+        </div>
+      </div>
+      
+      <!-- Mediastream Player -->
+      <div class="flex-1">
+        <Typography variant="h2" color="white" size="large">
+          Video Mediastream
+        </Typography>
+        <div class="mt-4">
+          <div
+            id="mdstrm-player"
+            ref="playerContainer"
+            class="aspect-video w-[100%!important] max-w-[640px!important]"
+          ></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</template>
+```
+
+<Note>
+  The Mediastream Player SDK is dynamically loaded only when needed, improving initial page load performance.
+</Note>
+
+### Player Features
+
+<AccordionGroup>
+  <Accordion title="Native HTML5 Player">
+    - Standard browser video controls
+    - HLS (HTTP Live Streaming) support
+    - Auto-play capability
+    - Full-screen mode
+    - Picture-in-picture support (browser dependent)
+  </Accordion>
+
+  <Accordion title="Mediastream Player">
+    - Advanced analytics tracking
+    - Custom player controls
+    - Multiple quality options
+    - Adaptive bitrate streaming
+    - Player event callbacks
+    - Custom branding options
+  </Accordion>
+</AccordionGroup>
+
+## API Integration
+
+The `ChapterController` (Episode Controller) manages all episode operations.
+
+### Backend Controller
+
+```php
+class ChapterController extends Controller
+{
+    /**
+     * Display all episodes in a season.
+     */
+    public function index(Request $request)
+    {
+        $showId = $request->route('showId');
+        $seasonId = $request->route('seasonId');
+
+        $response = MediastreamService::request(
+            '/show/' . $showId . '/season/' . $seasonId . '/episode/',
+            'get'
+        );
+
+        return $response->json();
+    }
+
+    /**
+     * Store a newly created episode.
+     */
+    public function store(Request $request)
+    {
+        $showId = $request->route('showId');
+        $seasonId = $request->route('seasonId');
+
+        $response = MediastreamService::request(
+            '/show/' . $showId . '/season/' . $seasonId . '/episode/',
+            'post',
+            $request->all()
+        );
+
+        return $response->json();
+    }
+
+    /**
+     * Display the specified episode.
+     */
+    public function show(Request $request)
+    {
+        $showId = $request->route('showId');
+        $seasonId = $request->route('seasonId');
+        $chapterId = $request->route('chapterId');
+
+        $response = MediastreamService::request(
+            '/show/' . $showId . '/season/' . $seasonId . '/episode/' . $chapterId,
+            'get'
+        );
+
+        return $response->json();
+    }
+
+    /**
+     * Update the specified episode.
+     */
+    public function update(Request $request)
+    {
+        $showId = $request->route('showId');
+        $seasonId = $request->route('seasonId');
+        $chapterId = $request->route('chapterId');
+
+        $response = MediastreamService::request(
+            '/show/' . $showId . '/season/' . $seasonId . '/episode/' . $chapterId,
+            'post',
+            $request->all()
+        );
+
+        return $response->json();
+    }
+
+    /**
+     * Remove the specified episode.
+     */
+    public function destroy(Request $request)
+    {
+        $showId = $request->route('showId');
+        $seasonId = $request->route('seasonId');
+        $chapterId = $request->route('chapterId');
+
+        $response = MediastreamService::request(
+            '/show/' . $showId . '/season/' . $seasonId . '/episode/' . $chapterId,
+            'delete'
+        );
+
+        return $response->json();
+    }
+}
+```
+
+### API Endpoints
+
+Episode endpoints are nested under series and seasons:
+
+<CodeGroup>
+```bash List Episodes
+GET /api/series/{showId}/seasons/{seasonId}/episodes
+```
+
+```bash Create Episode
+POST /api/series/{showId}/seasons/{seasonId}/episodes
+```
+
+```bash Get Episode
+GET /api/series/{showId}/seasons/{seasonId}/episodes/{chapterId}
+```
+
+```bash Update Episode
+POST /api/series/{showId}/seasons/{seasonId}/episodes/{chapterId}
+```
+
+```bash Delete Episode
+DELETE /api/series/{showId}/seasons/{seasonId}/episodes/{chapterId}
+```
+</CodeGroup>
+
+## Video Streaming URLs
+
+MediaStream uses HLS (HTTP Live Streaming) for video delivery:
+
+```javascript
+// HLS streaming URL format
+const streamUrl = `https://mdstrm.com/video/${videoId}.m3u8`
+
+// Example
+const videoId = "5f8a3d2b1c9d440000123456"
+const url = `https://mdstrm.com/video/${videoId}.m3u8`
+```
+
+<Tip>
+  HLS streaming automatically adapts video quality based on the viewer's internet connection speed.
+</Tip>
+
+## Best Practices
+
+<AccordionGroup>
+  <Accordion title="Episode Naming">
+    Use clear, descriptive episode titles:
+    - Include episode numbers: "Episode 1: Getting Started"
+    - Use descriptive names: "Introduction to Components"
+    - Keep titles concise but informative
+    - Maintain consistent naming across the season
+  </Accordion>
+
+  <Accordion title="Episode Descriptions">
+    Write compelling descriptions that:
+    - Summarize the episode content
+    - Highlight key topics covered
+    - Avoid spoilers for narrative content
+    - Use keywords for better searchability
+  </Accordion>
+
+  <Accordion title="Video Content">
+    Ensure your video content:
+    - Has been uploaded to Mediastream
+    - Is properly encoded and processed
+    - Has appropriate thumbnail images
+    - Is tested for playback before publishing
+  </Accordion>
+
+  <Accordion title="Content Organization">
+    Organize episodes effectively:
+    - Maintain logical episode order
+    - Group related content in the same season
+    - Keep episode lengths consistent
+    - Plan the full season before creating episodes
+  </Accordion>
+</AccordionGroup>
+
+## Troubleshooting
+
+<AccordionGroup>
+  <Accordion title="Video Not Playing">
+    If an episode won't play:
+    1. Verify the video ID is correct
+    2. Check that the video is published in Mediastream
+    3. Test the HLS URL directly in a browser
+    4. Clear browser cache and cookies
+    5. Try a different browser
+    6. Check browser console for errors
+  </Accordion>
+
+  <Accordion title="Player Not Loading">
+    If the Mediastream player doesn't load:
+    1. Check that the SDK script loaded successfully
+    2. Verify no JavaScript errors in console
+    3. Ensure the player container element exists
+    4. Check for conflicting JavaScript libraries
+    5. Verify your Mediastream API access
+  </Accordion>
+
+  <Accordion title="Thumbnails Not Showing">
+    If episode thumbnails don't appear:
+    1. Verify images were uploaded to Mediastream
+    2. Check the image URL path is correct
+    3. Ensure the CDN is accessible
+    4. Look for CORS errors in console
+    5. Try the fallback image URL
+  </Accordion>
+</AccordionGroup>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="VOD Upload" icon="upload" href="/features/vod-upload">
+    Learn how to upload video content
+  </Card>
+  <Card title="Series Management" icon="film" href="/features/series-management">
+    Go back to series management
+  </Card>
+</CardGroup>

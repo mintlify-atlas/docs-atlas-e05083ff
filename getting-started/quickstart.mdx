@@ -1,0 +1,377 @@
+---
+title: Quick Start
+description: Get up and running with MediaStream in minutes
+---
+
+## Introduction
+
+This guide will walk you through creating your first series, adding seasons and episodes, and uploading media content in MediaStream.
+
+<Note>
+  Make sure you've completed the [installation](/getting-started/installation) before proceeding.
+</Note>
+
+## Create Your Account
+
+<Steps>
+  <Step title="Register a new account">
+    Navigate to `http://localhost:8000` and click **Register**.
+
+    Fill in your account details:
+    - Name
+    - Email address
+    - Password (minimum 8 characters)
+
+    ```bash
+    # Default registration is enabled via Laravel Fortify
+    # Registration can be disabled in config/fortify.php
+    ```
+  </Step>
+
+  <Step title="Verify your email (optional)">
+    If email verification is enabled, check your email and click the verification link.
+
+    For local development, check the logs:
+
+    ```bash
+    php artisan pail
+    ```
+  </Step>
+
+  <Step title="Access the dashboard">
+    After logging in, you'll be redirected to the dashboard at `/dashboard`.
+  </Step>
+</Steps>
+
+## Create Your First Series
+
+<Steps>
+  <Step title="Navigate to Series Management">
+    From the dashboard, click **Series** or navigate to `/series`.
+  </Step>
+
+  <Step title="Create a new series">
+    Click **Create Series** and fill in the details:
+
+    - **Title**: The name of your series (e.g., "Breaking Bad")
+    - **Description**: A brief overview of the series
+    - **Release Year**: When the series was released
+    - **Status**: Active or Inactive
+
+    The series controller is located at:
+    ```
+    app/Http/Controllers/Web/SeriesController.php
+    ```
+  </Step>
+
+  <Step title="Upload series artwork">
+    Add a poster or thumbnail image for your series. Supported formats include:
+    - JPG/JPEG
+    - PNG
+    - WebP
+  </Step>
+</Steps>
+
+## Add Seasons
+
+<Steps>
+  <Step title="Open your series">
+    Click on the series you just created to view its details.
+  </Step>
+
+  <Step title="Add a season">
+    Click **Add Season** and provide:
+
+    - **Season Number**: Sequential number (e.g., 1, 2, 3)
+    - **Title**: Optional season title
+    - **Description**: Season overview
+    - **Release Date**: When this season was released
+
+    Routes are defined in `routes/web.php:26-30`:
+    ```php
+    Route::resource('series.seasons', SeasonController::class)
+        ->parameters([
+            'series' => 'showId',
+            'seasons' => 'seasonId',
+        ]);
+    ```
+  </Step>
+</Steps>
+
+## Add Episodes (Chapters)
+
+<Steps>
+  <Step title="Navigate to the season">
+    Click on the season to view episode management.
+  </Step>
+
+  <Step title="Create an episode">
+    Click **Add Episode** and enter:
+
+    - **Episode Number**: Sequential number within the season
+    - **Title**: Episode title
+    - **Description**: Episode synopsis
+    - **Duration**: Length in minutes
+    - **Air Date**: When the episode aired
+
+    <Info>
+      Episodes are referred to as "chapters" in the codebase (`ChapterController`).
+    </Info>
+  </Step>
+
+  <Step title="Upload video content">
+    For each episode, you can:
+
+    1. Upload video files directly
+    2. Provide external video URLs
+    3. Link to existing media in your library
+
+    Media uploads are handled by:
+    ```
+    app/Http/Controllers/Web/Media/MediaContoller.php
+    ```
+  </Step>
+</Steps>
+
+## Upload Media
+
+MediaStream provides a centralized media library:
+
+<Steps>
+  <Step title="Access Media Library">
+    Navigate to `/medias` to view all uploaded media files.
+  </Step>
+
+  <Step title="Upload new media">
+    Click **Upload Media** and select your video file.
+
+    Supported formats:
+    - MP4
+    - WebM
+    - OGG
+
+    <Warning>
+      Large video files may take time to upload. Ensure your PHP configuration allows sufficient upload size and execution time.
+    </Warning>
+  </Step>
+
+  <Step title="Manage media metadata">
+    After upload, you can:
+
+    - Edit media title and description
+    - Add tags for organization
+    - Set thumbnail images
+    - Link media to episodes
+  </Step>
+</Steps>
+
+## Configure Application Settings
+
+Customize MediaStream to fit your needs:
+
+<Steps>
+  <Step title="Access settings">
+    Click your profile icon and select **Settings**.
+
+    Settings routes are defined in:
+    ```
+    routes/settings.php
+    ```
+  </Step>
+
+  <Step title="Available settings">
+    Configure:
+
+    - **Profile**: Update name, email, password
+    - **Theme**: Toggle between light and dark mode
+    - **Two-Factor Authentication**: Enable 2FA for enhanced security
+    - **API Tokens**: Generate tokens for API access
+  </Step>
+</Steps>
+
+## Understanding the Architecture
+
+MediaStream is built with:
+
+### Frontend Stack
+
+- **Vue 3**: Progressive JavaScript framework
+- **Inertia.js**: Modern monolith architecture
+- **TypeScript**: Type-safe JavaScript
+- **Tailwind CSS**: Utility-first styling
+- **Vite**: Fast build tool with HMR
+
+Entry point:
+```typescript
+// resources/js/app.ts
+import { createInertiaApp } from '@inertiajs/vue3';
+import { resolvePageComponent } from 'laravel-vite-plugin/inertia-helpers';
+```
+
+### Backend Stack
+
+- **Laravel 12**: PHP framework
+- **Fortify**: Authentication system
+- **SQLite/MySQL**: Database
+- **Queue System**: Background job processing
+
+Routes structure:
+```php
+// routes/web.php
+Route::middleware('auth')->group(function () {
+    Route::resource('series', SeriesController::class);
+    Route::resource('series.seasons', SeasonController::class);
+    Route::resource('series.seasons.chapters', ChapterController::class);
+    Route::resource('medias', MediaContoller::class);
+});
+```
+
+## Development Workflow
+
+<Steps>
+  <Step title="Start development server">
+    Use the convenient dev command that starts all services:
+
+    ```bash
+    composer run dev
+    ```
+
+    This runs concurrently:
+    - Laravel server (`php artisan serve`)
+    - Queue worker (`php artisan queue:listen`)
+    - Log viewer (`php artisan pail`)
+    - Vite dev server (`npm run dev`)
+  </Step>
+
+  <Step title="Watch for changes">
+    Vite provides Hot Module Replacement (HMR) for instant updates:
+
+    - Edit Vue components in `resources/js/`
+    - Modify styles in `resources/css/`
+    - Changes reflect immediately in the browser
+  </Step>
+
+  <Step title="Run tests">
+    Execute the test suite:
+
+    ```bash
+    composer run test
+    ```
+
+    MediaStream uses Pest PHP for testing:
+    ```bash
+    # Run specific test file
+    php artisan test tests/Feature/SeriesTest.php
+    ```
+  </Step>
+</Steps>
+
+## Code Quality Tools
+
+MediaStream includes several code quality tools:
+
+### Backend (PHP)
+
+```bash
+# Fix code style with Laravel Pint
+vendor/bin/pint
+
+# Run static analysis
+vendor/bin/phpstan analyse
+```
+
+### Frontend (JavaScript/TypeScript)
+
+```bash
+# Lint code
+npm run lint
+
+# Format code with Prettier
+npm run format
+
+# Check formatting
+npm run format:check
+```
+
+## API Access
+
+MediaStream provides a RESTful API for programmatic access:
+
+```bash
+# API routes are defined in routes/api.php
+# Generate an API token in Settings > API Tokens
+```
+
+Example API request:
+
+```bash
+curl -X GET http://localhost:8000/api/series \
+  -H "Authorization: Bearer YOUR_API_TOKEN" \
+  -H "Accept: application/json"
+```
+
+<Info>
+  See the [API Reference](/api-reference) for complete API documentation.
+</Info>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Configuration" icon="gear" href="/getting-started/configuration">
+    Learn about environment variables and advanced configuration
+  </Card>
+  <Card title="Series Management" icon="tv" href="/features/series-management">
+    Deep dive into managing series, seasons, and episodes
+  </Card>
+  <Card title="User Authentication" icon="lock" href="/features/user-authentication">
+    Configure authentication, 2FA, and user management
+  </Card>
+  <Card title="Architecture" icon="diagram-project" href="/development/architecture">
+    Understand MediaStream's technical architecture
+  </Card>
+</CardGroup>
+
+## Common Tasks
+
+<AccordionGroup>
+  <Accordion title="How to bulk upload episodes?">
+    Currently, episodes must be uploaded individually through the UI. For bulk operations, consider using:
+
+    1. Laravel Tinker for manual database operations
+    2. Custom artisan commands
+    3. The REST API with a script
+  </Accordion>
+
+  <Accordion title="How to change the default theme?">
+    Theme preferences are stored per-user. Initialize the theme in:
+
+    ```typescript
+    // resources/js/app.ts:29
+    initializeTheme();
+    ```
+
+    Theme state is managed in `resources/js/composables/useAppearance.ts`
+  </Accordion>
+
+  <Accordion title="How to enable/disable user registration?">
+    Configure Fortify features in `config/fortify.php`:
+
+    ```php
+    'features' => [
+        Features::registration(),
+        Features::resetPasswords(),
+        Features::emailVerification(),
+        Features::updateProfileInformation(),
+        Features::updatePasswords(),
+        Features::twoFactorAuthentication(),
+    ],
+    ```
+  </Accordion>
+
+  <Accordion title="How to add custom fields to series?">
+    1. Create a migration to add database columns
+    2. Update the Series model in `app/Models/`
+    3. Modify the SeriesController validation rules
+    4. Update the Vue form component in `resources/js/pages/`
+  </Accordion>
+</AccordionGroup>

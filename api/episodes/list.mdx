@@ -1,0 +1,195 @@
+---
+title: 'List Episodes'
+api: 'GET /api/series/{showId}/seasons/{seasonId}/chapters'
+description: 'Retrieve all episodes (chapters) within a specific season'
+---
+
+## Overview
+
+This endpoint returns a list of all episodes for a specific season within a series. Episodes are also referred to as "chapters" in the MediaStream API.
+
+## Path Parameters
+
+<ParamField path="showId" type="string" required>
+  The unique identifier of the series
+</ParamField>
+
+<ParamField path="seasonId" type="string" required>
+  The unique identifier of the season
+</ParamField>
+
+## Request Example
+
+<CodeGroup>
+```bash cURL
+curl -X GET "https://your-domain.com/api/series/abc123/seasons/def456/chapters" \
+  -H "Accept: application/json"
+```
+
+```javascript JavaScript
+const response = await fetch(
+  'https://your-domain.com/api/series/abc123/seasons/def456/chapters',
+  {
+    method: 'GET',
+    headers: {
+      'Accept': 'application/json'
+    }
+  }
+);
+const data = await response.json();
+```
+
+```php PHP
+$response = MediastreamService::request(
+    '/show/' . $showId . '/season/' . $seasonId . '/episode/',
+    'get'
+);
+
+return $response->json();
+```
+</CodeGroup>
+
+## Response
+
+<ResponseField name="episodes" type="array">
+  Array of episode objects
+
+  <Expandable title="Episode Object">
+    <ResponseField name="_id" type="string">
+      Unique episode identifier
+    </ResponseField>
+
+    <ResponseField name="title" type="string">
+      Episode title
+    </ResponseField>
+
+    <ResponseField name="description" type="string">
+      Episode description
+    </ResponseField>
+
+    <ResponseField name="content" type="array">
+      Video content array
+      
+      <Expandable title="Content Object">
+        <ResponseField name="value" type="object">
+          <ResponseField name="_id" type="string">
+            Video ID from Mediastream
+          </ResponseField>
+        </ResponseField>
+      </Expandable>
+    </ResponseField>
+
+    <ResponseField name="images" type="array">
+      Episode thumbnail images
+      
+      <Expandable title="Image Object">
+        <ResponseField name="_id" type="string">
+          Image identifier
+        </ResponseField>
+
+        <ResponseField name="path" type="string">
+          Image path
+        </ResponseField>
+
+        <ResponseField name="basePath" type="string">
+          Base CDN path for the image
+        </ResponseField>
+      </Expandable>
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+### Response Example
+
+```json
+[
+  {
+    "_id": "64a7f2b1c8d4e12345abcdef",
+    "title": "Episode 1: Pilot",
+    "description": "The beginning of an epic journey",
+    "content": [
+      {
+        "value": {
+          "_id": "5f8a3d2b1c9d440000123456"
+        }
+      }
+    ],
+    "images": [
+      {
+        "_id": "img123",
+        "path": "/images/episode1.jpg",
+        "basePath": "/images/episodes/pilot"
+      }
+    ]
+  },
+  {
+    "_id": "64a7f2b1c8d4e12345abcd00",
+    "title": "Episode 2: The Adventure Begins",
+    "description": "Our heroes embark on their quest",
+    "content": [
+      {
+        "value": {
+          "_id": "5f8a3d2b1c9d440000123457"
+        }
+      }
+    ],
+    "images": [
+      {
+        "_id": "img124",
+        "path": "/images/episode2.jpg",
+        "basePath": "/images/episodes/adventure"
+      }
+    ]
+  }
+]
+```
+
+## Error Responses
+
+<ResponseField name="error" type="string">
+  Error message describing what went wrong
+</ResponseField>
+
+### Common Errors
+
+<AccordionGroup>
+  <Accordion title="404 Not Found">
+    The specified series or season does not exist.
+    
+    ```json
+    {
+      "error": "Season not found"
+    }
+    ```
+  </Accordion>
+
+  <Accordion title="401 Unauthorized">
+    Invalid or missing API authentication.
+    
+    ```json
+    {
+      "error": "Unauthorized access"
+    }
+    ```
+  </Accordion>
+
+  <Accordion title="500 Internal Server Error">
+    Server error while fetching episodes.
+    
+    ```json
+    {
+      "error": "Failed to retrieve episodes"
+    }
+    ```
+  </Accordion>
+</AccordionGroup>
+
+## Notes
+
+<Note>
+  This endpoint proxies requests to the MediaStream API. Ensure your `MEDIASTREAM_API_URL` and `MEDIASTREAM_API_KEY` environment variables are properly configured.
+</Note>
+
+<Tip>
+  Episodes are returned in the order they were created. Use the episode `_id` to fetch individual episode details.
+</Tip>

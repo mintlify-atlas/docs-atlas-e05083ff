@@ -1,0 +1,386 @@
+---
+title: 'User Settings'
+description: 'Manage your profile, security, and preferences'
+icon: 'gear'
+---
+
+## Overview
+
+The Settings section allows you to customize your MediaStream account, manage security features, and personalize your experience. Access settings by clicking your profile menu in the sidebar and selecting **Settings**.
+
+## Accessing Settings
+
+<Steps>
+  <Step title="Open User Menu">
+    Click on your profile picture or name in the bottom-left corner of the sidebar.
+    
+    This opens a dropdown menu with your account options.
+  </Step>
+
+  <Step title="Select Settings">
+    Click the **Settings** option (gear icon) in the dropdown menu.
+    
+    You'll be taken to the Settings page with a sidebar navigation.
+  </Step>
+</Steps>
+
+## Settings Navigation
+
+The Settings page features a sidebar with four main sections:
+
+<CardGroup cols={2}>
+  <Card title="Profile" icon="user">
+    Update your name and email address
+  </Card>
+  <Card title="Password" icon="lock">
+    Change your account password
+  </Card>
+  <Card title="Two-Factor Auth" icon="shield-check">
+    Enable additional security with 2FA
+  </Card>
+  <Card title="Appearance" icon="palette">
+    Customize the look and feel
+  </Card>
+</CardGroup>
+
+## Profile Settings
+
+### Updating Profile Information
+
+<Steps>
+  <Step title="Navigate to Profile">
+    Click **Profile** in the settings sidebar.
+    
+    Breadcrumb: "Profile settings"
+  </Step>
+
+  <Step title="Edit Your Information">
+    Update the following fields:
+    
+    **Name** (Required)
+    - Your full name as displayed in the application
+    - Autocomplete: name
+    
+    **Email Address** (Required)
+    - Your account email address
+    - Used for login and notifications
+    - Autocomplete: username
+  </Step>
+
+  <Step title="Save Changes">
+    Click the **Save** button to update your profile.
+    
+    - Button is disabled while processing
+    - "Saved." message appears briefly on success
+  </Step>
+</Steps>
+
+### Email Verification
+
+If your email is unverified, you'll see:
+
+<Note>
+**Your email address is unverified.**
+
+Click the link to resend the verification email. You'll receive a confirmation message when the email is sent.
+</Note>
+
+Once you click to resend:
+- A new verification link is sent to your email
+- Green confirmation text appears: "A new verification link has been sent to your email address"
+- Check your inbox and click the verification link
+
+## Password Settings
+
+Keep your account secure by regularly updating your password.
+
+### Changing Your Password
+
+<Steps>
+  <Step title="Navigate to Password Settings">
+    Click **Password** in the settings sidebar.
+    
+    Breadcrumb: "Password settings"
+  </Step>
+
+  <Step title="Enter Password Information">
+    Fill in all three required fields:
+    
+    **Current Password** (Required)
+    - Your existing password for verification
+    - Autocomplete: current-password
+    
+    **New Password** (Required)
+    - Your new password
+    - Should be long and random for security
+    - Autocomplete: new-password
+    
+    **Confirm Password** (Required)
+    - Re-enter your new password to confirm
+    - Must match the new password exactly
+    - Autocomplete: new-password
+  </Step>
+
+  <Step title="Save New Password">
+    Click **Save password** to update.
+    
+    - Button disabled during processing
+    - "Saved." confirmation appears on success
+    - Form fields clear automatically
+  </Step>
+</Steps>
+
+<Warning>
+Make sure to use a strong password that includes a mix of uppercase and lowercase letters, numbers, and special characters.
+</Warning>
+
+### Password Best Practices
+
+<CardGroup cols={2}>
+  <Card title="Use Long Passwords" icon="ruler-horizontal">
+    Aim for at least 12-16 characters for maximum security
+  </Card>
+  <Card title="Avoid Common Words" icon="ban">
+    Don't use dictionary words or personal information
+  </Card>
+  <Card title="Unique Passwords" icon="fingerprint">
+    Use a different password for each account
+  </Card>
+  <Card title="Password Manager" icon="vault">
+    Consider using a password manager to generate and store secure passwords
+  </Card>
+</CardGroup>
+
+## Two-Factor Authentication (2FA)
+
+Add an extra layer of security to your account with two-factor authentication.
+
+### Understanding 2FA
+
+Two-factor authentication requires two forms of verification:
+1. Your password (something you know)
+2. A time-based code from your phone (something you have)
+
+### Enabling Two-Factor Authentication
+
+<Steps>
+  <Step title="Navigate to 2FA Settings">
+    Click **Two-Factor Auth** in the settings sidebar.
+    
+    You'll see a badge showing current status: **Disabled** (red) or **Enabled** (default).
+  </Step>
+
+  <Step title="Enable 2FA">
+    If 2FA is currently disabled:
+    
+    1. Read the information about how 2FA works
+    2. Click the **Enable 2FA** button (shield-check icon)
+    3. Wait for the setup modal to appear
+  </Step>
+
+  <Step title="Set Up Authenticator App">
+    A modal will guide you through setup:
+    
+    1. Install a TOTP-supported app on your phone (like Google Authenticator, Authy, or Microsoft Authenticator)
+    2. Scan the QR code displayed in the modal
+    3. Enter the 6-digit code from your authenticator app
+    4. Confirm to complete setup
+  </Step>
+
+  <Step title="Save Recovery Codes">
+    **Important**: Save your recovery codes in a secure location.
+    
+    - Recovery codes allow access if you lose your phone
+    - Each code can only be used once
+    - Store them securely offline
+  </Step>
+</Steps>
+
+<Tip>
+If you exit the setup process before confirming, you can click **Continue Setup** to resume where you left off.
+</Tip>
+
+### Managing 2FA When Enabled
+
+Once 2FA is enabled, you can:
+
+**View Recovery Codes**
+- Access your saved recovery codes
+- Generate new codes if needed
+- Download or print for safekeeping
+
+**Disable 2FA**
+- Click the red **Disable 2FA** button (shield-ban icon)
+- Confirm your decision
+- 2FA will be removed from your account
+
+<Warning>
+Disabling 2FA reduces your account security. Only disable if absolutely necessary.
+</Warning>
+
+### Using 2FA During Login
+
+Once enabled, the login process changes:
+
+1. Enter your email and password as usual
+2. You'll be prompted for a 2FA code
+3. Open your authenticator app
+4. Enter the current 6-digit code
+5. Click verify to complete login
+
+<Accordion title="Lost access to authenticator app?">
+  If you lose access to your authenticator app:
+  
+  1. Use one of your recovery codes to log in
+  2. Go to 2FA settings and disable 2FA
+  3. Set up 2FA again with a new authenticator app
+  4. Save your new recovery codes
+  
+  If you've lost both your authenticator app and recovery codes, contact support for account recovery assistance.
+</Accordion>
+
+## Appearance Settings
+
+Customize how MediaStream looks and feels to match your preferences.
+
+### Accessing Appearance Settings
+
+<Steps>
+  <Step title="Navigate to Appearance">
+    Click **Appearance** in the settings sidebar.
+    
+    Breadcrumb: "Appearance settings"
+  </Step>
+
+  <Step title="Customize Your Experience">
+    Use the appearance tabs to adjust visual settings:
+    
+    - Theme options (light/dark mode)
+    - Color preferences
+    - Display settings
+    - Other visual customizations
+  </Step>
+</Steps>
+
+<Note>
+Appearance settings are saved automatically and apply immediately across the entire application.
+</Note>
+
+## Account Management
+
+### Deleting Your Account
+
+At the bottom of the Profile settings page, you'll find the account deletion option.
+
+<Warning>
+**Account deletion is permanent and cannot be undone.**
+
+Before deleting your account:
+- Download any content you want to keep
+- Cancel any active subscriptions
+- Understand that all your data will be permanently removed
+</Warning>
+
+## Settings Layout Features
+
+### Responsive Design
+
+The settings page adapts to your screen:
+
+- **Desktop**: Sidebar navigation on the left (192px width), content on the right
+- **Mobile**: Navigation stacked above content
+- **Content Width**: Maximum 640px for optimal readability
+
+### Navigation Highlighting
+
+The active settings section is highlighted:
+- Current page has a muted background (`bg-muted`)
+- Clear visual indicator of your location
+- Easy to see which section you're viewing
+
+### Form Behavior
+
+<CardGroup cols={2}>
+  <Card title="Real-time Validation" icon="check-circle">
+    Form fields validate as you type, showing errors immediately
+  </Card>
+  <Card title="Processing States" icon="spinner">
+    Buttons disable during submission to prevent double-clicks
+  </Card>
+  <Card title="Success Messages" icon="circle-check">
+    Brief confirmation messages appear when changes are saved
+  </Card>
+  <Card title="Auto-reset" icon="rotate-left">
+    Some forms clear automatically after successful submission
+  </Card>
+</CardGroup>
+
+## Keyboard Navigation
+
+Settings pages support keyboard navigation:
+
+- **Tab**: Move between form fields and buttons
+- **Enter**: Submit forms or click focused buttons
+- **Escape**: Close modals or dropdowns
+
+<Tip>
+Use keyboard shortcuts to navigate settings more efficiently, especially when filling out multiple forms.
+</Tip>
+
+## Common Settings Tasks
+
+<AccordionGroup>
+  <Accordion title="How do I change my display name?">
+    Go to Profile settings, update the **Name** field, and click Save. Your new name will appear immediately throughout the application.
+  </Accordion>
+  
+  <Accordion title="I forgot my password">
+    If you're logged out, use the "Forgot Password" link on the login page. If you're logged in, go to Password settings and change it using your current password.
+  </Accordion>
+  
+  <Accordion title="Can I use the same email for multiple accounts?">
+    No, each account requires a unique email address. You'll need different email addresses for separate accounts.
+  </Accordion>
+  
+  <Accordion title="How do I know if 2FA is working?">
+    After enabling 2FA, log out and log back in. You should be prompted for a 6-digit code from your authenticator app.
+  </Accordion>
+  
+  <Accordion title="What if I change my email?">
+    When you change your email in Profile settings, you'll need to verify the new address before it becomes active.
+  </Accordion>
+</AccordionGroup>
+
+## Security Recommendations
+
+<CardGroup cols={3}>
+  <Card title="Enable 2FA" icon="shield-check">
+    Add two-factor authentication for maximum account security
+  </Card>
+  <Card title="Strong Password" icon="key">
+    Use a long, unique password with mixed characters
+  </Card>
+  <Card title="Verify Email" icon="envelope-circle-check">
+    Keep your email verified for account recovery
+  </Card>
+  <Card title="Regular Updates" icon="arrows-rotate">
+    Change your password periodically
+  </Card>
+  <Card title="Recovery Codes" icon="floppy-disk">
+    Save 2FA recovery codes in a secure location
+  </Card>
+  <Card title="Monitor Activity" icon="eye">
+    Regularly review your account settings for any unexpected changes
+  </Card>
+</CardGroup>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Dashboard" icon="gauge" href="./dashboard">
+    Return to your dashboard overview
+  </Card>
+  <Card title="Create Content" icon="plus" href="./creating-series">
+    Start creating and organizing your media
+  </Card>
+</CardGroup>

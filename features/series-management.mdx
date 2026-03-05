@@ -1,0 +1,283 @@
+---
+title: 'Series Management'
+description: 'Create, manage, and organize your video series with an intuitive interface'
+icon: 'film'
+---
+
+## Overview
+
+MediaStream provides comprehensive series management capabilities that allow you to organize your video content into structured series. Each series can contain multiple seasons and episodes, making it perfect for TV shows, educational courses, and episodic content.
+
+<CardGroup cols={2}>
+  <Card title="Create Series" icon="plus">
+    Add new series with titles, descriptions, and cover images
+  </Card>
+  <Card title="Browse Library" icon="grid">
+    View all your series in a beautiful grid layout
+  </Card>
+  <Card title="Update Details" icon="pen">
+    Edit series information, images, and metadata
+  </Card>
+  <Card title="Delete Series" icon="trash">
+    Remove series and all associated content
+  </Card>
+</CardGroup>
+
+## Creating a New Series
+
+To create a new series, navigate to the Series section and click "Add Series".
+
+### Required Fields
+
+<ParamField path="series_name" type="string" required>
+  The name of your series (e.g., "Breaking Bad", "Introduction to Laravel")
+</ParamField>
+
+<ParamField path="series_type" type="string" required>
+  The type of series. Currently supports:
+  - `tvshow` - Traditional TV show format
+</ParamField>
+
+### Example: Creating a Series
+
+The series creation form is built with Vue.js and uses Inertia.js for seamless server-side communication:
+
+```vue
+<Form v-bind="series.store.form()" 
+  :reset-on-success="['series_name', 'series_type']"
+  v-slot="{ errors, processing }" 
+  class="flex flex-col space-y-4 items-center">
+  
+  <Box>
+    <Label for="series_name" class="w-full text-lg font-semibold">
+      Añadir nueva serie
+    </Label>
+    <Input id="series_name" 
+      name="series_name" 
+      type="text" 
+      placeholder="Nombre de la serie" 
+      :disabled="processing" 
+      required />
+  </Box>
+  
+  <Box>
+    <Label for="series_type" class="w-full text-lg font-semibold">
+      Tipo de serie
+    </Label>
+    <Select name="series_type" :disabled="processing">
+      <SelectTrigger>
+        <SelectValue placeholder="Selecciona el tipo de serie:" />
+      </SelectTrigger>
+      <SelectContent>
+        <SelectGroup>
+          <SelectItem value="tvshow">Serie</SelectItem>
+        </SelectGroup>
+      </SelectContent>
+    </Select>
+  </Box>
+  
+  <Button type="submit" class="w-1/2 max-w-[300px]" :disabled="processing">
+    <Spinner v-if="processing" />
+    Añadir serie
+  </Button>
+</Form>
+```
+
+<Note>
+  The form automatically resets the input fields after successful submission, allowing you to quickly create multiple series.
+</Note>
+
+## Browsing Your Series Library
+
+All your series are displayed in a responsive grid layout with cover images, titles, and descriptions.
+
+### Series Card Features
+
+- **Hover Effects**: Cards scale and overlay on hover for better visual feedback
+- **Cover Images**: Automatically fetched from Mediastream CDN
+- **Clickable**: Click any series to view its details, seasons, and episodes
+
+```vue
+<Link :href="series.show(item._id)" 
+  class="w-full group bg-content-1 hover:bg-content-1/50 transition-colors 
+         rounded-small h-auto min-h-[250px] shadow-md cursor-pointer overflow-hidden">
+  <div class="aspect-video w-full relative overflow-hidden">
+    <picture>
+      <img :src="imageUrl(item)" 
+        class="object-cover inset-0 w-full h-full transition-transform 
+               duration-300 group-hover:scale-105" />
+    </picture>
+    <div class="absolute inset-0 bg-black/0 group-hover:bg-black/40 
+                transition-colors duration-300"></div>
+  </div>
+  <div class="p-2">
+    <Typography variant="h2" color="white" size="base">
+      {{ item.title }}
+    </Typography>
+    <Typography variant="h2" color="white" size="base">
+      {{ item.description }}
+    </Typography>
+  </div>
+</Link>
+```
+
+## API Integration
+
+MediaStream uses a Laravel backend that communicates with the Mediastream API service.
+
+### Backend Controller
+
+The `SeriesController` handles all CRUD operations:
+
+```php
+class SeriesController extends Controller
+{
+    /**
+     * Display a listing of all series.
+     */
+    public function index()
+    {
+        $response = MediastreamService::request(
+            '/show',
+            'get'
+        );
+
+        return $response->json();
+    }
+
+    /**
+     * Store a newly created series.
+     */
+    public function store(Request $request)
+    {
+        $response = MediastreamService::request(
+            '/show', 
+            'post', 
+            $request->all()
+        );
+        return $response->json();
+    }
+
+    /**
+     * Display the specified series.
+     */
+    public function show(Request $request)
+    {
+        $showId = $request->route('showId');
+
+        $response = MediastreamService::request(
+            '/show/' . $showId,
+            'get'
+        );
+        
+        return $response->json();
+    }
+
+    /**
+     * Update the specified series.
+     */
+    public function update(Request $request)
+    {
+        $showId = $request->route('showId');
+        
+        $response = MediastreamService::request(
+            '/show/' . $showId,
+            'post',
+            $request->all()
+        );
+
+        return $response->json();
+    }
+
+    /**
+     * Remove the specified series.
+     */
+    public function destroy(Request $request)
+    {
+        $showId = $request->route('showId');
+
+        $response = MediastreamService::request(
+            '/show/' . $showId,
+            'delete'
+        );
+        
+        return $response->json();
+    }
+}
+```
+
+<Tip>
+  The `MediastreamService` automatically handles authentication using your API key from environment variables.
+</Tip>
+
+## Series Detail View
+
+When you click on a series, you'll see:
+
+<CardGroup cols={2}>
+  <Card title="Cover Image" icon="image">
+    Full-width hero image for the series
+  </Card>
+  <Card title="Metadata" icon="info">
+    Title, description, and other series information
+  </Card>
+  <Card title="Seasons" icon="list">
+    All seasons associated with the series
+  </Card>
+  <Card title="Episodes" icon="play">
+    Episode list for the selected season
+  </Card>
+</CardGroup>
+
+### Quick Actions
+
+From the series detail page, you can:
+
+- Add new seasons with the **+** button
+- Switch between seasons using the dropdown selector
+- View all episodes for the selected season
+- Edit season and episode details
+
+## Best Practices
+
+<AccordionGroup>
+  <Accordion title="Naming Conventions">
+    Use clear, descriptive names for your series. Include the year or season if you have multiple versions of the same content.
+    
+    Examples:
+    - "Product Training 2024"
+    - "Customer Onboarding Series"
+    - "The Marketing Masterclass"
+  </Accordion>
+
+  <Accordion title="Series Types">
+    Choose the appropriate series type:
+    - **TV Show**: Traditional episodic content with seasons and episodes
+    
+    Future types may include documentaries, courses, and more.
+  </Accordion>
+
+  <Accordion title="Cover Images">
+    Series cover images are automatically managed by Mediastream. Ensure you upload high-quality images (minimum 1280x720) when creating your content.
+  </Accordion>
+
+  <Accordion title="Organization">
+    Structure your content logically:
+    1. Create the series first
+    2. Add seasons to organize episodes
+    3. Upload episodes to specific seasons
+    
+    This hierarchy makes content management much easier as your library grows.
+  </Accordion>
+</AccordionGroup>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Season Management" icon="layer-group" href="/features/season-management">
+    Learn how to organize episodes into seasons
+  </Card>
+  <Card title="Episode Management" icon="video" href="/features/episode-management">
+    Add and manage individual episodes
+  </Card>
+</CardGroup>

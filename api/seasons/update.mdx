@@ -1,0 +1,227 @@
+---
+title: 'Update Season'
+description: 'Modify an existing season'
+api: 'PUT /api/series/{showId}/seasons/{seasonId}'
+---
+
+## Overview
+
+Updates the details of an existing season. You can modify the title, description, and other metadata. This endpoint allows partial updates, so you only need to include the fields you want to change.
+
+## Endpoint
+
+```
+PUT /api/series/{showId}/seasons/{seasonId}
+```
+
+<Note>
+  While the standard HTTP method for this endpoint is `PUT`, the backend implementation uses `POST` for compatibility with the MediaStream API service.
+</Note>
+
+## Path Parameters
+
+<ParamField path="showId" type="string" required>
+  The unique identifier of the series that contains the season. This is the MongoDB ObjectId of the parent series.
+</ParamField>
+
+<ParamField path="seasonId" type="string" required>
+  The unique identifier of the season to update. This is the MongoDB ObjectId of the season.
+</ParamField>
+
+## Body Parameters
+
+<ParamField body="title" type="string">
+  The new title for the season. If omitted, the current title remains unchanged.
+</ParamField>
+
+<ParamField body="description" type="string">
+  The new description for the season. If omitted, the current description remains unchanged.
+</ParamField>
+
+<Note>
+  You can send any fields you want to update. Fields not included in the request will retain their current values.
+</Note>
+
+## Response
+
+<ResponseField name="_id" type="string">
+  Unique identifier for the updated season (MongoDB ObjectId)
+</ResponseField>
+
+<ResponseField name="title" type="string">
+  The updated title of the season
+</ResponseField>
+
+<ResponseField name="description" type="string">
+  The updated description of the season
+</ResponseField>
+
+<ResponseField name="images" type="array">
+  Array of image objects associated with the season
+  
+  <ResponseField name="_id" type="string">
+    Unique identifier for the image
+  </ResponseField>
+  
+  <ResponseField name="path" type="string">
+    Relative path to the image file
+  </ResponseField>
+  
+  <ResponseField name="basePath" type="string">
+    Base path for constructing the full CDN URL
+  </ResponseField>
+</ResponseField>
+
+## Example Request
+
+### Update Title and Description
+
+```bash
+curl -X PUT "https://your-domain.com/api/series/507f1f77bcf86cd799439011/seasons/507f191e810c19729de860ea" \
+  -H "Accept: application/json" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "title": "Season 1: The Beginning",
+    "description": "An updated description with more details about the season"
+  }'
+```
+
+### Update Only Title
+
+```bash
+curl -X PUT "https://your-domain.com/api/series/507f1f77bcf86cd799439011/seasons/507f191e810c19729de860ea" \
+  -H "Accept: application/json" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "title": "Season 1: The Beginning"
+  }'
+```
+
+## Example Response
+
+```json
+{
+  "_id": "507f191e810c19729de860ea",
+  "title": "Season 1: The Beginning",
+  "description": "An updated description with more details about the season",
+  "images": [
+    {
+      "_id": "507f191e810c19729de860eb",
+      "path": "/seasons/season1-cover.jpg",
+      "basePath": "/images/seasons/507f191e810c19729de860ea/season1-cover.jpg"
+    }
+  ]
+}
+```
+
+## Error Responses
+
+<ResponseField name="error" type="object">
+  Error object returned when the request fails
+  
+  <ResponseField name="message" type="string">
+    Description of the error
+  </ResponseField>
+  
+  <ResponseField name="status" type="number">
+    HTTP status code
+  </ResponseField>
+</ResponseField>
+
+### 404 Not Found
+
+Returned when the series or season does not exist:
+
+```json
+{
+  "error": {
+    "message": "Season not found",
+    "status": 404
+  }
+}
+```
+
+### 400 Bad Request
+
+Returned when the request data is invalid:
+
+```json
+{
+  "error": {
+    "message": "Invalid request data",
+    "status": 400
+  }
+}
+```
+
+### 500 Internal Server Error
+
+Returned when there's a server-side error:
+
+```json
+{
+  "error": {
+    "message": "Failed to update season",
+    "status": 500
+  }
+}
+```
+
+## Implementation Notes
+
+- The endpoint is implemented in `app/Http/Controllers/Api/SeasonController.php` in the `update` method
+- Laravel's resource controller maps `PUT` requests to this method
+- The implementation forwards the request as a `POST` to the MediaStream API for compatibility
+- All request data from `$request->all()` is passed to the MediaStream service
+- Both `showId` and `seasonId` are required in the URL path
+
+## Controller Implementation
+
+From `app/Http/Controllers/Api/SeasonController.php`:
+
+```php
+public function update(Request $request)
+{
+    $showId = $request->route('showId');
+    $seasonId = $request->route('seasonId');
+
+    $response = MediastreamService::request(
+        '/show/' . $showId . '/season/' . $seasonId,
+        'post',
+        $request->all()
+    );
+
+    return $response->json();
+}
+```
+
+## Frontend Integration
+
+To update a season from the frontend, you can use the edit link shown in the season template:
+
+```vue
+<Link 
+  :href="`series/${props?.showId}/season/${props?.seasonId}`" 
+  class="flex w-8 aspect-square hover:bg-content-3 items-center justify-center">
+  <Icon name="Pencil" size="24"></Icon>
+</Link>
+```
+
+See `resources/js/components/template/series/season-template.vue` for the complete implementation.
+
+## Related Endpoints
+
+<CardGroup cols={2}>
+  <Card title="Get Season" icon="eye" href="/api/seasons/get">
+    Retrieve current season details
+  </Card>
+  <Card title="Delete Season" icon="trash" href="/api/seasons/delete">
+    Remove the season
+  </Card>
+  <Card title="List Seasons" icon="list" href="/api/seasons/list">
+    View all seasons
+  </Card>
+  <Card title="Create Season" icon="plus" href="/api/seasons/create">
+    Add a new season
+  </Card>
+</CardGroup>

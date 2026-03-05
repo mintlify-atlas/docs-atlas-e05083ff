@@ -1,0 +1,193 @@
+---
+title: 'Create Season'
+description: 'Add a new season to a series'
+api: 'POST /api/series/{showId}/seasons'
+---
+
+## Overview
+
+Creates a new season within a specific series. Seasons organize episodes into logical groups, typically representing different production periods or story arcs.
+
+## Endpoint
+
+```
+POST /api/series/{showId}/seasons
+```
+
+## Path Parameters
+
+<ParamField path="showId" type="string" required>
+  The unique identifier of the series to which this season will be added. This is the MongoDB ObjectId of the series.
+</ParamField>
+
+## Body Parameters
+
+<ParamField body="title" type="string" required>
+  The title of the season. Common formats include:
+  - "Season 1", "Season 2", etc.
+  - "Temporada 1", "Temporada 2" (Spanish)
+  - Custom names like "The Beginning", "Origins"
+</ParamField>
+
+<ParamField body="description" type="string" required>
+  A description of the season's content, themes, or story arc. This helps users understand what to expect from the season.
+</ParamField>
+
+## Response
+
+<ResponseField name="_id" type="string">
+  Unique identifier for the newly created season (MongoDB ObjectId)
+</ResponseField>
+
+<ResponseField name="title" type="string">
+  The title of the season as provided in the request
+</ResponseField>
+
+<ResponseField name="description" type="string">
+  The description of the season as provided in the request
+</ResponseField>
+
+<ResponseField name="images" type="array">
+  Array of image objects. Initially empty unless images are uploaded during creation.
+</ResponseField>
+
+## Example Request
+
+```bash
+curl -X POST "https://your-domain.com/api/series/507f1f77bcf86cd799439011/seasons" \
+  -H "Accept: application/json" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "title": "Season 1",
+    "description": "The first season introduces the main characters and establishes the core storyline"
+  }'
+```
+
+## Example Response
+
+```json
+{
+  "_id": "507f191e810c19729de860ea",
+  "title": "Season 1",
+  "description": "The first season introduces the main characters and establishes the core storyline",
+  "images": []
+}
+```
+
+## Error Responses
+
+<ResponseField name="error" type="object">
+  Error object returned when the request fails
+  
+  <ResponseField name="message" type="string">
+    Description of the error
+  </ResponseField>
+  
+  <ResponseField name="status" type="number">
+    HTTP status code
+  </ResponseField>
+</ResponseField>
+
+### 400 Bad Request
+
+Returned when required fields are missing or invalid:
+
+```json
+{
+  "error": {
+    "message": "Validation failed",
+    "status": 400,
+    "details": {
+      "title": ["The title field is required"],
+      "description": ["The description field is required"]
+    }
+  }
+}
+```
+
+### 404 Not Found
+
+Returned when the parent series does not exist:
+
+```json
+{
+  "error": {
+    "message": "Series not found",
+    "status": 404
+  }
+}
+```
+
+### 500 Internal Server Error
+
+Returned when there's a server-side error:
+
+```json
+{
+  "error": {
+    "message": "Failed to create season",
+    "status": 500
+  }
+}
+```
+
+## Implementation Notes
+
+- The endpoint is defined in `routes/api.php` using Laravel's nested resource routing
+- The `SeasonController::store` method in `app/Http/Controllers/Api/SeasonController.php` handles the request
+- All request data is forwarded to the MediaStream API service via `MediastreamService::request()`
+- The season is automatically associated with the parent series via the `showId` path parameter
+- Images can be added to the season later through the media upload endpoints
+
+## Frontend Integration
+
+The frontend uses Inertia.js forms to create seasons. Here's the Vue.js implementation:
+
+```vue
+<Form
+  v-bind="apiSeasons.store.form({ showId: props.showId })"
+  :reset-on-success="['title', 'description']"
+  v-slot="{ errors, processing }"
+>
+  <Input 
+    id="title" 
+    name="title" 
+    type="text" 
+    placeholder="Nombre de la temporada" 
+    :disabled="processing" 
+    required 
+  />
+  
+  <Input 
+    id="description" 
+    name="description" 
+    type="text" 
+    placeholder="Descripción de la temporada" 
+    :disabled="processing" 
+    required 
+  />
+  
+  <Button type="submit" :disabled="processing">
+    Añadir temporada
+  </Button>
+</Form>
+```
+
+See `resources/js/pages/(media)/series/[showId]/seasons/create/index.vue` for the complete implementation.
+
+## Related Endpoints
+
+<CardGroup cols={2}>
+  <Card title="List Seasons" icon="list" href="/api/seasons/list">
+    View all seasons for a series
+  </Card>
+  <Card title="Update Season" icon="pen" href="/api/seasons/update">
+    Modify season details
+  </Card>
+  <Card title="Get Season" icon="eye" href="/api/seasons/get">
+    Retrieve a specific season
+  </Card>
+  <Card title="Create Episode" icon="plus" href="/api/episodes/create">
+    Add episodes to the season
+  </Card>
+</CardGroup>

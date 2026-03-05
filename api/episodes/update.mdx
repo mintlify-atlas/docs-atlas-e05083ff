@@ -1,0 +1,275 @@
+---
+title: 'Update Episode'
+api: 'PUT /api/series/{showId}/seasons/{seasonId}/chapters/{chapterId}'
+description: 'Update an existing episode'
+---
+
+## Overview
+
+This endpoint updates an existing episode's information, including its title, description, video content, and thumbnail images.
+
+## Path Parameters
+
+<ParamField path="showId" type="string" required>
+  The unique identifier of the series
+</ParamField>
+
+<ParamField path="seasonId" type="string" required>
+  The unique identifier of the season
+</ParamField>
+
+<ParamField path="chapterId" type="string" required>
+  The unique identifier of the episode to update
+</ParamField>
+
+## Body Parameters
+
+<ParamField body="title" type="string">
+  Updated episode title
+</ParamField>
+
+<ParamField body="description" type="string">
+  Updated episode description
+</ParamField>
+
+<ParamField body="content" type="array">
+  Updated video content array. Must contain valid MediaStream video IDs.
+  
+  ```json
+  [
+    {
+      "value": {
+        "_id": "5f8a3d2b1c9d440000123456"
+      }
+    }
+  ]
+  ```
+</ParamField>
+
+<ParamField body="images" type="array">
+  Updated array of thumbnail images
+</ParamField>
+
+<Note>
+  You only need to include the fields you want to update. Omitted fields will remain unchanged.
+</Note>
+
+## Request Example
+
+<CodeGroup>
+```bash cURL
+curl -X PUT "https://your-domain.com/api/series/abc123/seasons/def456/chapters/ghi789" \
+  -H "Content-Type: application/json" \
+  -H "Accept: application/json" \
+  -d '{
+    "title": "Episode 1: A New Beginning",
+    "description": "Updated description with more details about the episode content"
+  }'
+```
+
+```javascript JavaScript
+const response = await fetch(
+  'https://your-domain.com/api/series/abc123/seasons/def456/chapters/ghi789',
+  {
+    method: 'PUT',
+    headers: {
+      'Content-Type': 'application/json',
+      'Accept': 'application/json'
+    },
+    body: JSON.stringify({
+      title: 'Episode 1: A New Beginning',
+      description: 'Updated description with more details about the episode content'
+    })
+  }
+);
+const data = await response.json();
+```
+
+```php PHP
+$response = MediastreamService::request(
+    '/show/' . $showId . '/season/' . $seasonId . '/episode/' . $chapterId,
+    'post',
+    [
+        'title' => 'Episode 1: A New Beginning',
+        'description' => 'Updated description with more details about the episode content'
+    ]
+);
+
+return $response->json();
+```
+</CodeGroup>
+
+<Note>
+  The MediaStream API uses POST method for updates. The Laravel controller automatically handles this conversion from PUT to POST.
+</Note>
+
+## Response
+
+<ResponseField name="_id" type="string">
+  The episode identifier (unchanged)
+</ResponseField>
+
+<ResponseField name="title" type="string">
+  Updated episode title
+</ResponseField>
+
+<ResponseField name="description" type="string">
+  Updated episode description
+</ResponseField>
+
+<ResponseField name="content" type="array">
+  Updated video content array
+</ResponseField>
+
+<ResponseField name="images" type="array">
+  Updated thumbnail images
+</ResponseField>
+
+<ResponseField name="updatedAt" type="string">
+  ISO 8601 timestamp of the update
+</ResponseField>
+
+### Success Response Example
+
+```json
+{
+  "_id": "64a7f2b1c8d4e12345abcdef",
+  "title": "Episode 1: A New Beginning",
+  "description": "Updated description with more details about the episode content",
+  "content": [
+    {
+      "value": {
+        "_id": "5f8a3d2b1c9d440000123456"
+      }
+    }
+  ],
+  "images": [
+    {
+      "_id": "img123",
+      "path": "/images/episode1.jpg",
+      "basePath": "/images/episodes/pilot"
+    }
+  ],
+  "createdAt": "2024-03-01T10:30:00Z",
+  "updatedAt": "2024-03-05T16:45:00Z"
+}
+```
+
+## Common Update Scenarios
+
+<AccordionGroup>
+  <Accordion title="Update Episode Title">
+    Change the episode title to something more descriptive:
+    
+    ```json
+    {
+      "title": "Episode 1: The Journey Begins"
+    }
+    ```
+  </Accordion>
+
+  <Accordion title="Update Episode Description">
+    Enhance the episode description with more details:
+    
+    ```json
+    {
+      "description": "In this exciting first episode, our heroes embark on an adventure that will change their lives forever. Watch as they discover hidden secrets and face unexpected challenges."
+    }
+    ```
+  </Accordion>
+
+  <Accordion title="Replace Video Content">
+    Update the video content with a new upload:
+    
+    ```json
+    {
+      "content": [
+        {
+          "value": {
+            "_id": "new-video-id-from-mediastream"
+          }
+        }
+      ]
+    }
+    ```
+  </Accordion>
+
+  <Accordion title="Update Multiple Fields">
+    Update several fields at once:
+    
+    ```json
+    {
+      "title": "Episode 1: Revised Edition",
+      "description": "Remastered version with enhanced quality",
+      "content": [
+        {
+          "value": {
+            "_id": "remastered-video-id"
+          }
+        }
+      ]
+    }
+    ```
+  </Accordion>
+</AccordionGroup>
+
+## Error Responses
+
+<AccordionGroup>
+  <Accordion title="404 Not Found">
+    The specified episode, season, or series does not exist.
+    
+    ```json
+    {
+      "error": "Episode not found"
+    }
+    ```
+  </Accordion>
+
+  <Accordion title="400 Bad Request">
+    Invalid data format or validation error.
+    
+    ```json
+    {
+      "error": "Validation failed",
+      "details": {
+        "content": "Invalid video ID format"
+      }
+    }
+    ```
+  </Accordion>
+
+  <Accordion title="401 Unauthorized">
+    Invalid or missing API authentication.
+    
+    ```json
+    {
+      "error": "Unauthorized access"
+    }
+    ```
+  </Accordion>
+
+  <Accordion title="500 Internal Server Error">
+    Server error while updating the episode.
+    
+    ```json
+    {
+      "error": "Failed to update episode"
+    }
+    ```
+  </Accordion>
+</AccordionGroup>
+
+## Notes
+
+<Warning>
+  When updating video content, ensure the new video ID is valid and the video has been successfully uploaded to MediaStream. Invalid video IDs will cause playback failures.
+</Warning>
+
+<Tip>
+  It's best practice to update only the fields that have changed rather than sending the entire episode object. This reduces bandwidth and processing time.
+</Tip>
+
+<Info>
+  Updates are reflected immediately in the UI. Users viewing the episode list or detail page will see the changes after refreshing.
+</Info>
