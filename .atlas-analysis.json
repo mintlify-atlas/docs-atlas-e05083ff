@@ -1,0 +1,140 @@
+{
+  "projectType": "saas",
+  "projectName": "MediaStream",
+  "projectDescription": "A full-stack media streaming management platform for organizing series, seasons, episodes, and video-on-demand content",
+  "theme": "maple",
+  "primaryColor": "#dc2626",
+  "lightColor": "#f87171",
+  "darkColor": "#991b1b",
+  "navigation": {
+    "tabs": [
+      {
+        "tab": "Documentation",
+        "groups": [
+          {
+            "group": "Overview",
+            "pages": [
+              "introduction",
+              "features"
+            ]
+          },
+          {
+            "group": "Getting Started",
+            "pages": [
+              "getting-started/installation",
+              "getting-started/quickstart",
+              "getting-started/configuration"
+            ]
+          },
+          {
+            "group": "Core Features",
+            "pages": [
+              "features/series-management",
+              "features/season-management",
+              "features/episode-management",
+              "features/vod-upload",
+              "features/user-authentication"
+            ]
+          },
+          {
+            "group": "User Guide",
+            "pages": [
+              "user-guide/dashboard",
+              "user-guide/creating-series",
+              "user-guide/managing-content",
+              "user-guide/settings"
+            ]
+          },
+          {
+            "group": "Development",
+            "pages": [
+              "development/architecture",
+              "development/frontend",
+              "development/backend",
+              "development/database"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "API Reference",
+        "groups": [
+          {
+            "group": "Authentication",
+            "pages": [
+              "api/authentication/overview",
+              "api/authentication/login",
+              "api/authentication/register",
+              "api/authentication/two-factor"
+            ]
+          },
+          {
+            "group": "Series",
+            "pages": [
+              "api/series/list",
+              "api/series/create",
+              "api/series/get",
+              "api/series/update",
+              "api/series/delete"
+            ]
+          },
+          {
+            "group": "Seasons",
+            "pages": [
+              "api/seasons/list",
+              "api/seasons/create",
+              "api/seasons/get",
+              "api/seasons/update",
+              "api/seasons/delete"
+            ]
+          },
+          {
+            "group": "Episodes",
+            "pages": [
+              "api/episodes/list",
+              "api/episodes/create",
+              "api/episodes/get",
+              "api/episodes/update",
+              "api/episodes/delete"
+            ]
+          },
+          {
+            "group": "Media",
+            "pages": [
+              "api/media/upload",
+              "api/media/management"
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "keyFeatures": [
+    "Series and TV show organization",
+    "Season and episode management",
+    "Video-on-demand upload and streaming",
+    "User authentication with 2FA",
+    "Content dashboard and analytics",
+    "RESTful API for content management",
+    "Mediastream API integration",
+    "Responsive Vue.js interface"
+  ],
+  "publicApiSurface": [
+    "GET /api/series - List all series",
+    "POST /api/series - Create a new series",
+    "GET /api/series/{showId} - Get series details",
+    "PUT /api/series/{showId} - Update series",
+    "DELETE /api/series/{showId} - Delete series",
+    "GET /api/series/{showId}/seasons - List seasons",
+    "POST /api/series/{showId}/seasons - Create season",
+    "GET /api/series/{showId}/seasons/{seasonId} - Get season details",
+    "PUT /api/series/{showId}/seasons/{seasonId} - Update season",
+    "DELETE /api/series/{showId}/seasons/{seasonId} - Delete season",
+    "GET /api/series/{showId}/seasons/{seasonId}/chapters - List episodes",
+    "POST /api/series/{showId}/seasons/{seasonId}/chapters - Create episode",
+    "GET /api/series/{showId}/seasons/{seasonId}/chapters/{chapterId} - Get episode details",
+    "PUT /api/series/{showId}/seasons/{seasonId}/chapters/{chapterId} - Update episode",
+    "DELETE /api/series/{showId}/seasons/{seasonId}/chapters/{chapterId} - Delete episode",
+    "GET /api/media/upload - Upload media content"
+  ]
+}
